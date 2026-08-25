@@ -32,3 +32,6 @@ lich_hop_app/.metadata
 
 # --- Supabase local temp ---
 supabase/.temp/
+
+# --- MS Office lock files ---
+~$*
