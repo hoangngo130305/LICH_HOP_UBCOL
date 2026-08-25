@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Hệ thống Quản lý Lịch họp – v2</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a2744;--navy2:#253660;
+  --green:#1e4a3a;--green2:#2a6350;
+  --accent:#3b7dd8;--accent-bg:#e6f1fb;
+  --green-bg:#e1f5ee;
+  --warn-bg:#faeeda;--warn:#ba7517;
+  --danger-bg:#faece7;--danger:#d85a30;
+  --purple-bg:#ede9fe;--purple:#534ab7;
+  --s0:#f4f4f2;--s1:#f9f9f8;--s2:#fff;
+  --bd:#e2e2de;--bds:#ccccc8;
+  --tp:#1a1a18;--ts:#5f5e5a;--tm:#9a9994;
+  --r:8px;
+}
+body{font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;background:var(--s0);color:var(--tp);min-height:100vh}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a2744,#1e4a3a)}
+.lcard{background:#fff;border-radius:16px;padding:40px 36px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.llogo{text-align:center;margin-bottom:24px}
+.llogo .iw{width:52px;height:52px;border-radius:14px;background:var(--navy);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
+.llogo .iw i{font-size:26px;color:#fff}
+.llogo h1{font-size:15px;font-weight:600}
+.llogo p{font-size:11px;color:var(--tm);margin-top:3px}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.rbtn{border:1.5px solid var(--bd);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--s1);transition:all .15s}
+.rbtn:hover{border-color:var(--accent);background:var(--accent-bg)}
+.rbtn.sel{border-color:var(--accent);background:var(--accent-bg)}
+.rbtn i{font-size:20px;display:block;margin-bottom:5px;color:var(--ts)}
+.rbtn.sel i{color:var(--accent)}
+.rbtn .rt{font-size:11px;font-weight:500;color:var(--ts);display:block;line-height:1.3}
+.rbtn.sel .rt{color:#185FA5}
+.rbtn .rs{font-size:10px;color:var(--tm);display:block;margin-top:2px}
+.lbtn{width:100%;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.lbtn:hover{background:var(--navy2)}
+.lhint{font-size:11px;color:var(--tm);text-align:center;margin-top:8px}
+
+/* APP */
+#app{display:none;height:100vh;flex-direction:column}
+.topbar{height:48px;background:var(--navy);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.topbar .brand{color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.topbar .sp{flex:1}
+.topbar .ui{color:#8fa8d6;font-size:12px;display:flex;align-items:center;gap:6px}
+.rbadge{font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.12);color:#c5d8f0}
+.logbtn{background:rgba(255,255,255,.1);border:none;color:#8fa8d6;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.logbtn:hover{background:rgba(255,255,255,.2);color:#fff}
+.body-area{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:200px;background:var(--s1);border-right:0.5px solid var(--bd);flex-shrink:0;overflow-y:auto}
+.slabel{font-size:10px;font-weight:600;color:var(--tm);letter-spacing:.06em;padding:10px 16px 3px;text-transform:uppercase}
+.nitem{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12px;color:var(--ts);cursor:pointer;border-left:3px solid transparent}
+.nitem:hover{background:var(--s0);color:var(--tp)}
+.nitem.active{font-weight:500;border-left-color:var(--accent);background:var(--accent-bg);color:#185FA5}
+.nitem.active i{color:#185FA5}
+.nitem i{font-size:16px;flex-shrink:0}
+.ncnt{margin-left:auto;font-size:10px;background:var(--danger-bg);color:var(--danger);border-radius:10px;padding:1px 6px;font-weight:600}
+.sidebar.green .nitem.active{border-left-color:var(--green);background:var(--green-bg);color:var(--green)}
+.sidebar.green .nitem.active i{color:var(--green)}
+.sidebar.teal .nitem.active{border-left-color:#185FA5;background:var(--accent-bg);color:#185FA5}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;background:var(--s0)}
+.page{display:none;padding:20px}
+.page.active{display:block}
+.ph{margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ph-l h2{font-size:16px;font-weight:600}
+.ph-l p{font-size:12px;color:var(--ts);margin-top:3px}
+
+/* STATS */
+.srow{display:grid;gap:10px;margin-bottom:16px}
+.srow.c4{grid-template-columns:repeat(4,1fr)}
+.srow.c3{grid-template-columns:repeat(3,1fr)}
+.srow.c2{grid-template-columns:repeat(2,1fr)}
+.sc{background:var(--s1);border-radius:var(--r);padding:12px 14px;border:0.5px solid var(--bd)}
+.sc .lbl{font-size:11px;color:var(--ts);margin-bottom:4px}
+.sc .val{font-size:22px;font-weight:600}
+.v-green{color:#1D9E75}.v-amber{color:var(--warn)}.v-red{color:var(--danger)}.v-blue{color:var(--accent)}
+
+/* CARD */
+.card{background:var(--s2);border:0.5px solid var(--bd);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.ctitle{font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;justify-content:space-between}
+
+/* MEETING LIST */
+.mlist{display:flex;flex-direction:column;gap:8px}
+.mitem{background:var(--s2);border:0.5px solid var(--bd);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:box-shadow .12s}
+.mitem:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);border-color:var(--bds)}
+.mitem.nl{border-left:3px solid var(--navy);border-radius:0 10px 10px 0}
+.mitem.gl{border-left:3px solid #1D9E75;border-radius:0 10px 10px 0}
+.mitem.al{border-left:3px solid var(--warn);border-radius:0 10px 10px 0}
+.mitem.bl{border-left:3px solid var(--accent);border-radius:0 10px 10px 0}
+.dblk{text-align:center;min-width:38px}
+.dblk .d{font-size:20px;font-weight:700;line-height:1}
+.dblk .w{font-size:10px;color:var(--tm)}
+.vdiv{width:0.5px;background:var(--bd);align-self:stretch}
+.mbody{flex:1;min-width:0}
+.mtxt{font-size:13px;font-weight:500;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--ts)}
+.mmeta span{display:flex;align-items:center;gap:3px}
+.macts{display:flex;gap:5px;flex-shrink:0}
+
+/* BADGES */
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500;display:inline-flex;align-items:center;gap:3px}
+.b-am{background:var(--accent-bg);color:#185FA5}
+.b-pm{background:var(--warn-bg);color:#854F0B}
+.b-all{background:var(--green-bg);color:#3B6D11}
+.b-ubnd{background:var(--purple-bg);color:var(--purple)}
+.b-pb{background:var(--s0);color:var(--ts)}
+.b-done{background:var(--s0);color:var(--tm)}
+.b-soon{background:var(--green-bg);color:#0F6E56}
+.b-conflict{background:var(--danger-bg);color:#993C1D}
+.b-warn{background:var(--warn-bg);color:#854F0B}
+.b-accepted{background:var(--green-bg);color:#0F6E56}
+.b-declined{background:var(--danger-bg);color:#993C1D}
+.b-pending{background:var(--warn-bg);color:#854F0B}
+.b-blue{background:var(--accent-bg);color:#185FA5}
+
+/* ROOMS */
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rcard{background:var(--s2);border:0.5px solid var(--bd);border-radius:10px;padding:13px 14px}
+.rcard.ok{border-top:3px solid #1D9E75}
+.rcard.busy{border-top:3px solid var(--danger)}
+.rcard.conflict{border-top:3px solid var(--warn)}
+.rname{font-size:13px;font-weight:500;margin-bottom:3px}
+.rcap{font-size:11px;color:var(--tm);margin-bottom:8px}
+.rstatus{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+.rs-ok{background:var(--green-bg);color:#0F6E56}
+.rs-busy{background:var(--danger-bg);color:#993C1D}
+.rs-warn{background:var(--warn-bg);color:#854F0B}
+.rsched{margin-top:8px;display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ts)}
+.rsitem{display:flex;align-items:center;gap:5px}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:#1D9E75}.dot-busy{background:var(--danger)}.dot-warn{background:var(--warn)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:8px 10px;background:var(--s0);font-size:11px;font-weight:600;color:var(--ts);border-bottom:0.5px solid var(--bd)}
+.tbl td{padding:9px 10px;border-bottom:0.5px solid var(--bd);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--s0)}
+
+/* FORM */
+.fsec{margin-bottom:16px}
+.fst{font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--bd);display:flex;align-items:center;gap:6px}
+.frow{display:grid;gap:10px;margin-bottom:10px}
+.frow.c2{grid-template-columns:1fr 1fr}
+.frow.c3{grid-template-columns:1fr 1fr 1fr}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:11px;font-weight:500;color:var(--ts)}
+.fg label .req{color:var(--danger)}
+.fg input,.fg select,.fg textarea{font-size:12px;padding:8px 10px;border-radius:var(--r);border:0.5px solid var(--bds);background:#fff;color:var(--tp);width:100%;outline:none;font-family:inherit}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,125,216,.12)}
+.fg textarea{resize:vertical;min-height:60px;line-height:1.5}
+.stoggle{display:flex;gap:8px;flex-wrap:wrap}
+.sbtn{padding:6px 14px;border-radius:20px;border:0.5px solid var(--bds);background:#fff;font-size:11px;color:var(--ts);cursor:pointer;font-weight:500;font-family:inherit}
+.sbtn.active{background:var(--green-bg);color:#0F6E56;border-color:#1D9E75}
+.notice{padding:10px 12px;border-radius:8px;margin-bottom:12px;display:flex;gap:9px;align-items:flex-start;font-size:11px;line-height:1.6}
+.notice i{font-size:15px;flex-shrink:0;margin-top:1px}
+.n-info{background:var(--accent-bg);border:0.5px solid #b5d4f4;color:#185FA5}
+.n-info i{color:#378add}
+.n-warn{background:var(--warn-bg);border:0.5px solid #FAC775;color:#854F0B}
+.n-warn i{color:var(--warn)}
+.n-ok{background:var(--green-bg);border:0.5px solid #5DCAA5;color:#085041}
+.n-ok i{color:#1D9E75}
+.n-purple{background:var(--purple-bg);border:0.5px solid #AFA9EC;color:var(--purple)}
+.n-purple i{color:var(--purple)}
+
+/* MEMBER SELECT */
+.member-search-box{position:relative;margin-bottom:8px}
+.member-search-box input{width:100%;padding:8px 10px 8px 32px;border-radius:var(--r);border:0.5px solid var(--bds);background:#fff;font-size:12px;font-family:inherit;outline:none}
+.member-search-box input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,125,216,.12)}
+.member-search-box .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--tm);font-size:14px}
+.member-dropdown{background:var(--s2);border:0.5px solid var(--bd);border-radius:var(--r);max-height:180px;overflow-y:auto;margin-bottom:8px;display:none}
+.member-dropdown.open{display:block}
+.mopt{padding:8px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px}
+.mopt:hover{background:var(--s0)}
+.mopt .av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.mopt .av.g{background:var(--green-bg);color:var(--green)}
+.mopt .av.b{background:var(--accent-bg);color:#185FA5}
+.mopt .av.p{background:var(--purple-bg);color:var(--purple)}
+.mopt .mn{font-weight:500}
+.mopt .mt{font-size:10px;color:var(--tm)}
+.tags-box{display:flex;flex-wrap:wrap;gap:5px;padding:8px;border:0.5px solid var(--bds);border-radius:var(--r);min-height:42px;background:#fff}
+.tag{display:inline-flex;align-items:center;gap:4px;border-radius:12px;padding:3px 8px;font-size:11px}
+.tag.g{background:var(--green-bg);color:#085041}
+.tag.b{background:var(--accent-bg);color:#185FA5}
+.tag.p{background:var(--purple-bg);color:var(--purple)}
+.tag .rm{cursor:pointer;opacity:.5;font-size:12px;margin-left:1px}
+.tag .rm:hover{opacity:1}
+
+/* FILE ATTACH */
+.file-upload-area{border:1.5px dashed var(--bds);border-radius:var(--r);padding:16px;text-align:center;cursor:pointer;background:var(--s1);transition:all .15s;margin-bottom:8px}
+.file-upload-area:hover{border-color:var(--accent);background:var(--accent-bg)}
+.file-upload-area i{font-size:24px;color:var(--tm);display:block;margin-bottom:6px}
+.file-upload-area p{font-size:12px;color:var(--ts)}
+.file-upload-area span{font-size:11px;color:var(--tm)}
+.file-list{display:flex;flex-direction:column;gap:6px}
+.fitem{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s1);border:0.5px solid var(--bd);border-radius:var(--r);font-size:12px}
+.fitem .ficon{font-size:18px;flex-shrink:0}
+.fitem .ficon.pdf{color:#d85a30}
+.fitem .ficon.doc{color:#185FA5}
+.fitem .ficon.xls{color:#1D9E75}
+.fitem .ficon.img{color:var(--purple)}
+.fitem .fname{flex:1;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fitem .fsize{font-size:10px;color:var(--tm);flex-shrink:0}
+.fitem .fdel{background:none;border:none;color:var(--tm);cursor:pointer;padding:2px;border-radius:4px;display:flex;align-items:center}
+.fitem .fdel:hover{color:var(--danger);background:var(--danger-bg)}
+
+/* BUTTONS */
+.btn{border-radius:var(--r);padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;border:none;font-family:inherit;transition:all .12s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy2)}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:var(--green2)}
+.btn-accept{background:#1D9E75;color:#fff}
+.btn-accept:hover{background:#0F6E56}
+.btn-decline{background:var(--danger);color:#fff}
+.btn-decline:hover{background:#993C1D}
+.btn-ghost{background:none;border:0.5px solid var(--bds);color:var(--ts);cursor:pointer;border-radius:var(--r);padding:7px 14px;font-size:12px;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.btn-ghost:hover{background:var(--s0)}
+.chip{border:0.5px solid var(--bds);border-radius:var(--r);padding:5px 10px;font-size:11px;background:var(--s2);color:var(--ts);cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-family:inherit}
+.chip:hover{background:var(--s0)}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;padding-top:10px;border-top:0.5px solid var(--bd);margin-top:6px}
+
+/* TABS */
+.tabrow{display:flex;border-bottom:0.5px solid var(--bd);margin-bottom:16px}
+.tabi{padding:8px 16px;font-size:12px;color:var(--ts);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabi.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:500}
+.tabc{display:none}
+.tabc.active{display:block}
+
+/* CAL */
+.cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.chdr{text-align:center;font-size:10px;font-weight:600;color:var(--tm);padding:4px 0}
+.cday{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:12px;cursor:pointer;position:relative;flex-direction:column}
+.cday:hover{background:var(--s0)}
+.cday.today{background:var(--navy);color:#fff;font-weight:600}
+.cday.has-ev::after{content:'';width:4px;height:4px;border-radius:50%;background:#1D9E75;position:absolute;bottom:3px}
+.cday.today.has-ev::after{background:#7dc4a8}
+.cday.om{color:var(--tm)}
+.cnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cnav .ml{font-size:14px;font-weight:600}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:14px;width:520px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.mh{padding:16px 20px 14px;border-bottom:0.5px solid var(--bd);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.mh h3{font-size:15px;font-weight:600}
+.mb{padding:18px 20px}
+.mf{padding:14px 20px;border-top:0.5px solid var(--bd);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:#fff}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;display:none;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:9999;max-width:320px}
+.toast.show{display:flex}
+.toast.success{background:#0F6E56}
+.toast.warn{background:#854F0B}
+
+/* INVITE CARD */
+.invite-card{background:var(--s2);border:0.5px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:12px}
+.invite-header{background:var(--navy);padding:14px 18px;color:#fff}
+.invite-header .it{font-size:15px;font-weight:600;margin-bottom:4px}
+.invite-header .im{font-size:11px;color:#8fa8d6;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.invite-body{padding:14px 18px}
+.invite-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.invite-row i{font-size:17px;color:var(--tm);margin-top:1px;flex-shrink:0}
+.invite-row .il{font-size:11px;color:var(--ts);margin-bottom:2px}
+.invite-row .iv{font-size:13px;font-weight:500}
+.invite-actions{display:flex;gap:8px;padding:12px 18px;border-top:0.5px solid var(--bd);background:var(--s1)}
+.rsp-row{display:flex;gap:8px;align-items:center;padding:8px 12px;border-radius:var(--r);margin-bottom:6px;font-size:12px}
+.rsp-row.accepted{background:var(--green-bg)}
+.rsp-row.declined{background:var(--danger-bg)}
+.rsp-row.pending{background:var(--warn-bg)}
+.rsp-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+
+/* AVATAR */
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;flex-shrink:0}
+.av-g{background:var(--green-bg);color:var(--green)}
+.av-b{background:var(--accent-bg);color:#185FA5}
+.av-p{background:var(--purple-bg);color:var(--purple)}
+.av-a{background:var(--warn-bg);color:#854F0B}
+
+/* ATTACHMENT VIEW */
+.att-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s1);border:0.5px solid var(--bd);border-radius:var(--r);font-size:12px;margin-bottom:6px}
+.att-row .ai{font-size:20px;flex-shrink:0}
+.att-row .ai.pdf{color:var(--danger)}
+.att-row .ai.doc{color:var(--accent)}
+.att-row .ai.xls{color:#1D9E75}
+.att-row .an{flex:1;font-weight:500}
+.att-row .as{font-size:10px;color:var(--tm)}
+.att-row .adl{background:none;border:none;color:var(--accent);cursor:pointer;display:flex;align-items:center;gap:3px;font-size:11px;padding:4px 8px;border-radius:4px}
+.att-row .adl:hover{background:var(--accent-bg)}
+
+/* MEMBER TABLE */
+.mber-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--bd)}
+.mber-row:last-child{border-bottom:none}
+
+.divider{height:0.5px;background:var(--bd);margin:14px 0}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="lcard">
+    <div class="llogo">
+      <div class="iw"><i class="ti ti-building-community"></i></div>
+      <h1>Hệ thống Quản lý Lịch họp</h1>
+      <p>Ủy ban nhân dân – Prototype v2.0</p>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:var(--ts);margin-bottom:10px">Chọn vai trò đăng nhập</div>
+    <div class="role-grid">
+      <div class="rbtn" onclick="sel('lanhdao')" id="r-lanhdao"><i class="ti ti-crown"></i><span class="rt">Ban Lãnh đạo</span><span class="rs">Xem lịch (App)</span></div>
+      <div class="rbtn" onclick="sel('vanthu')" id="r-vanthu"><i class="ti ti-calendar-plus"></i><span class="rt">Văn thư Ủy ban</span><span class="rs">Lên lịch Ủy ban</span></div>
+      <div class="rbtn" onclick="sel('quantri')" id="r-quantri"><i class="ti ti-door"></i><span class="rt">Quản trị phòng</span><span class="rs">Điều phối phòng họp</span></div>
+      <div class="rbtn" onclick="sel('phongban')" id="r-phongban"><i class="ti ti-users"></i><span class="rt">Hành chính PB</span><span class="rs">Lịch nội bộ phòng</span></div>
+      <div class="rbtn" onclick="sel('thanhvien')" id="r-thanhvien" style="grid-column:span 2"><i class="ti ti-user-check"></i><span class="rt">Thành viên tham dự</span><span class="rs">Nhận lời mời họp · Xác nhận tham dự · Xem tài liệu</span></div>
+    </div>
+    <button class="lbtn" onclick="doLogin()"><i class="ti ti-login"></i> Đăng nhập</button>
+    <div class="lhint" id="lhint">Chọn vai trò để tiếp tục</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><i class="ti ti-building-community"></i> Hệ thống Quản lý Lịch họp</div>
+    <div class="sp"></div>
+    <div class="ui"><i class="ti ti-user-circle"></i><span id="tb-user"></span><span class="rbadge" id="tb-role"></span></div>
+    <button class="logbtn" onclick="doLogout()"><i class="ti ti-logout"></i> Thoát</button>
+  </div>
+  <div class="body-area">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="main" id="main"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="mh"><h3 id="m-title"></h3><button class="chip" style="padding:5px" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="mb" id="m-body"></div>
+    <div class="mf" id="m-foot"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i id="toast-ico" class="ti ti-check"></i><span id="toast-msg"></span></div>
+
+<script>
+// ===== DATA =====
+let role=null;
+const USERS={
+  lanhdao:{name:'Đ/c Nguyễn Văn Nghĩa',label:'Ban Lãnh đạo'},
+  vanthu:{name:'Nguyễn Thị Lan',label:'Văn thư Ủy ban'},
+  quantri:{name:'Trần Minh Đức',label:'Quản trị phòng họp'},
+  phongban:{name:'Lê Thị Mai',label:'Hành chính – Phòng Kinh tế'},
+  thanhvien:{name:'Trần Văn Bình',label:'Thành viên tham dự'}
+};
+
+const ALL_MEMBERS=[
+  {id:1,name:'Nguyễn Văn Nghĩa',title:'Chủ tịch UBND',unit:'Ban lãnh đạo',av:'NN',ac:'b'},
+  {id:2,name:'Trần Thị Thu',title:'Phó Chủ tịch',unit:'Ban lãnh đạo',av:'TT',ac:'b'},
+  {id:3,name:'Nguyễn Thị Lan',title:'Văn thư',unit:'VP UBND',av:'LN',ac:'g'},
+  {id:4,name:'Lê Văn Cường',title:'Trưởng phòng',unit:'Phòng Tài chính',av:'CL',ac:'p'},
+  {id:5,name:'Phạm Thị Dung',title:'Chuyên viên',unit:'VP UBND',av:'DP',ac:'g'},
+  {id:6,name:'Trần Văn Bình',title:'Chuyên viên',unit:'Phòng Kinh tế',av:'BT',ac:'g'},
+  {id:7,name:'Lê Thị Mai',title:'Hành chính',unit:'Phòng Kinh tế',av:'ML',ac:'g'},
+  {id:8,name:'Nguyễn Văn Hùng',title:'Trưởng phòng',unit:'Phòng Kinh tế',av:'HN',ac:'p'},
+  {id:9,name:'Hoàng Thị Nga',title:'Chuyên viên',unit:'Phòng Nội vụ',av:'NH',ac:'a'},
+  {id:10,name:'Trần Minh Đức',title:'Quản trị phòng',unit:'VP UBND',av:'DT',ac:'b'},
+];
+
+const SAMPLE_FILES=[
+  {name:'Chuong_trinh_hop.pdf',size:'245 KB',type:'pdf'},
+  {name:'Bao_cao_tuan.docx',size:'128 KB',type:'doc'},
+  {name:'Bang_theo_doi.xlsx',size:'89 KB',type:'xls'},
+];
+
+const MTG_UBND=[
+  {id:1,title:'Họp giao ban tuần – Ban lãnh đạo',date:'25',dow:'T.Sáu',time:'08:00',sess:'am',room:'Phòng họp lớn – T3',unit:'Ủy ban',host:'Đ/c Nguyễn Văn Nghĩa',memberIds:[1,2,3,4,5],content:'Đánh giá kết quả tuần trước, triển khai nhiệm vụ tuần mới.',files:[{name:'Chuong_trinh_hop.pdf',size:'245 KB',type:'pdf'},{name:'Bao_cao_tuan.docx',size:'128 KB',type:'doc'}],conflict:true,status:'upcoming'},
+  {id:2,title:'Làm việc với đoàn công tác tỉnh',date:'25',dow:'T.Sáu',time:'10:30',sess:'am',room:'Phòng họp lớn – T3',unit:'Ủy ban',host:'Đ/c Nguyễn Văn Nghĩa',memberIds:[1,2,3,9],content:'Tiếp đón và làm việc với đoàn kiểm tra của tỉnh.',files:[{name:'Ke_hoach_don_tiep.pdf',size:'312 KB',type:'pdf'}],conflict:true,status:'upcoming'},
+  {id:3,title:'Họp rà soát biên chế năm 2025',date:'25',dow:'T.Sáu',time:'14:00',sess:'pm',room:'Phòng họp nhỏ – T2',unit:'Phòng Nội vụ',host:'Trưởng phòng Nội vụ',memberIds:[3,4,5,6,9],content:'Rà soát chỉ tiêu biên chế các đơn vị trực thuộc.',files:[{name:'Bang_bien_che_2025.xlsx',size:'89 KB',type:'xls'},{name:'To_trinh_bien_che.docx',size:'156 KB',type:'doc'}],conflict:false,status:'upcoming'},
+  {id:4,title:'Phiên họp thường kỳ HĐND',date:'28',dow:'T.Hai',time:'08:00',sess:'all',room:'Hội trường lớn',unit:'Ủy ban',host:'Chủ tịch UBND',memberIds:[1,2,3,4,5,6,7,8,9,10],content:'Phiên họp thường kỳ Hội đồng nhân dân tháng 7.',files:[{name:'Chuong_trinh_ky_hop.pdf',size:'412 KB',type:'pdf'},{name:'Bao_cao_UBND.docx',size:'234 KB',type:'doc'},{name:'Phu_luc_so_lieu.xlsx',size:'178 KB',type:'xls'}],conflict:false,status:'upcoming'},
+  {id:5,title:'Tổng kết công tác 6 tháng đầu năm',date:'18',dow:'T.Sáu',time:'08:00',sess:'am',room:'Hội trường lớn',unit:'Ủy ban',host:'Đ/c Nguyễn Văn Nghĩa',memberIds:[1,2,3,4,5],content:'Tổng kết và đánh giá kết quả công tác 6 tháng.',files:[{name:'Bao_cao_6_thang.pdf',size:'512 KB',type:'pdf'}],conflict:false,status:'done'},
+];
+
+const MTG_PB=[
+  {id:10,title:'Họp sơ kết công tác tháng 7',date:'25',dow:'T.Sáu',time:'09:30',sess:'am',room:'Tại phòng Kinh tế',host:'Nguyễn Văn Hùng',memberIds:[6,7,8],content:'Sơ kết kết quả tháng 7, bàn phương hướng tháng 8.',files:[{name:'Bao_cao_thang7.pdf',size:'198 KB',type:'pdf'},{name:'Ke_hoach_thang8.docx',size:'87 KB',type:'doc'}],status:'upcoming'},
+  {id:11,title:'Rà soát kế hoạch phát triển kinh tế Q3',date:'28',dow:'T.Hai',time:'14:00',sess:'pm',room:'Tại phòng Kinh tế',host:'Nguyễn Văn Hùng',memberIds:[6,7,8,9],content:'Rà soát và cập nhật kế hoạch phát triển kinh tế Quý 3.',files:[{name:'KH_phat_trien_KT_Q3.xlsx',size:'234 KB',type:'xls'}],status:'upcoming'},
+  {id:12,title:'Trao đổi chuyên môn – báo cáo thống kê',date:'10',dow:'T.Năm',time:'08:30',sess:'am',room:'Tại phòng Kinh tế',host:'Phó phòng Kinh tế',memberIds:[6,7],content:'Trao đổi số liệu và phương pháp báo cáo thống kê định kỳ.',files:[],status:'done'},
+];
+
+// Responses cho thành viên id=6 (Trần Văn Bình)
+const MY_RESPONSES={1:'accepted',2:'pending',3:'pending',4:'declined',10:'accepted',11:'pending'};
+
+const ROOMS=[
+  {id:1,name:'Phòng họp lớn',loc:'Tầng 3',cap:40,status:'conflict',sched:[{t:'08:00',title:'Giao ban lãnh đạo',dot:'busy'},{t:'10:30',title:'Đoàn công tác tỉnh',dot:'warn',conflict:true}]},
+  {id:2,name:'Phòng họp nhỏ',loc:'Tầng 2',cap:15,status:'ok',sched:[{t:'14:00',title:'Họp biên chế 2025',dot:'ok'}]},
+  {id:3,name:'Phòng họp trực tuyến',loc:'Tầng 1',cap:20,status:'ok',sched:[]},
+  {id:4,name:'Hội trường lớn',loc:'Tầng trệt',cap:150,status:'ok',sched:[{t:'28/07',title:'Phiên họp HĐND',dot:'ok'}]},
+  {id:5,name:'Phòng họp VIP',loc:'Tầng 4',cap:10,status:'ok',sched:[]},
+];
+
+// ===== AUTH =====
+function sel(r){
+  role=r;
+  document.querySelectorAll('.rbtn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('r-'+r).classList.add('sel');
+  document.getElementById('lhint').textContent='Đã chọn: '+USERS[r].label;
+}
+function doLogin(){
+  if(!role){showToast('Vui lòng chọn vai trò','warn');return;}
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('tb-user').textContent=USERS[role].name;
+  document.getElementById('tb-role').textContent=USERS[role].label;
+  buildSidebar();
+  loadPage({lanhdao:'ld-today',vanthu:'vt-list',quantri:'qt-dash',phongban:'pb-list',thanhvien:'tv-invites'}[role]);
+}
+function doLogout(){
+  role=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.querySelectorAll('.rbtn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('lhint').textContent='Chọn vai trò để tiếp tục';
+}
+
+// ===== SIDEBAR =====
+function buildSidebar(){
+  const sb=document.getElementById('sidebar');
+  const clsMap={phongban:'green',thanhvien:'teal'};
+  sb.className='sidebar'+(clsMap[role]?' '+clsMap[role]:'');
+  const menus={
+    lanhdao:[{L:''},{id:'ld-today',ico:'ti-calendar-event',txt:'Lịch hôm nay'},{id:'ld-week',ico:'ti-calendar-week',txt:'Lịch tuần'},{id:'ld-cal',ico:'ti-calendar',txt:'Lịch tháng'}],
+    vanthu:[{L:''},{id:'vt-list',ico:'ti-layout-list',txt:'Danh sách lịch họp'},{id:'vt-create',ico:'ti-calendar-plus',txt:'Tạo lịch họp'},{id:'vt-cal',ico:'ti-calendar',txt:'Xem theo tháng'},{id:'vt-checkin',ico:'ti-clock-check',txt:'Điểm danh'}],
+    quantri:[{L:''},{id:'qt-dash',ico:'ti-layout-dashboard',txt:'Tổng quan',cnt:'2'},{id:'qt-rooms',ico:'ti-door',txt:'Quản lý phòng'},{id:'qt-all',ico:'ti-calendar-event',txt:'Tất cả lịch họp'},{id:'qt-conflict',ico:'ti-alert-triangle',txt:'Cảnh báo trùng',cnt:'2'}],
+    phongban:[{L:'Phòng Kinh tế'},{id:'pb-list',ico:'ti-calendar-event',txt:'Lịch họp của phòng'},{id:'pb-create',ico:'ti-calendar-plus',txt:'Tạo lịch họp'},{id:'pb-checkin',ico:'ti-clock-check',txt:'Điểm danh'},{id:'pb-members',ico:'ti-users',txt:'Thành viên phòng'},{L:'Lịch chung'},{id:'pb-ubnd',ico:'ti-calendar',txt:'Lịch Ủy ban (xem)'}],
+    thanhvien:[{L:'Của tôi'},{id:'tv-invites',ico:'ti-mail',txt:'Lời mời họp',cnt:'2'},{id:'tv-upcoming',ico:'ti-calendar-event',txt:'Lịch sắp tới'},{id:'tv-history',ico:'ti-history',txt:'Lịch sử cuộc họp'},{L:'Lịch của tôi'},{id:'tv-day',ico:'ti-calendar-day',txt:'Theo ngày'},{id:'tv-week',ico:'ti-calendar-week',txt:'Theo tuần'},{id:'tv-month',ico:'ti-calendar',txt:'Theo tháng'},{L:'Tra cứu'},{id:'tv-search',ico:'ti-search',txt:'Tìm kiếm lịch họp'}]
+  };
+  sb.innerHTML=menus[role].map(m=>{
+    if(m.L!==undefined)return`<div class="slabel" style="margin-top:${m.L?'12':'4'}px">${m.L}</div>`;
+    return`<div class="nitem" id="nav-${m.id}" onclick="loadPage('${m.id}')"><i class="ti ${m.ico}"></i>${m.txt}${m.cnt?`<span class="ncnt">${m.cnt}</span>`:''}</div>`;
+  }).join('');
+}
+
+function setNav(pid){
+  document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('active'));
+  const el=document.getElementById('nav-'+pid);
+  if(el)el.classList.add('active');
+}
+function loadPage(pid){
+  setNav(pid);
+  const mc=document.getElementById('main');
+  mc.innerHTML='';
+  const p=document.createElement('div');
+  p.className='page active';
+  mc.appendChild(p);
+  const map={
+    'ld-today':ldToday,'ld-week':ldWeek,'ld-cal':ldCal,
+    'vt-list':vtList,'vt-create':()=>vtCreate(p),'vt-cal':vtCal,'vt-checkin':checkin,
+    'qt-dash':qtDash,'qt-rooms':qtRooms,'qt-all':qtAll,'qt-conflict':qtConflict,
+    'pb-list':pbList,'pb-create':()=>pbCreate(p),'pb-checkin':pbCheckin,'pb-members':pbMembers,'pb-ubnd':pbUbnd,
+    'tv-invites':tvInvites,'tv-upcoming':tvUpcoming,'tv-history':tvHistory,'tv-search':tvSearch,
+    'tv-day':tvDay,'tv-week':tvWeek,'tv-month':tvMonth
+  };
+  if(map[pid])typeof map[pid]==='function'?map[pid](p):map[pid](p);
+}
+
+// ===== HELPERS =====
+function sessBadge(s){return s==='am'?['b-am','Buổi sáng']:s==='pm'?['b-pm','Buổi chiều']:['b-all','Cả ngày']}
+function fileIcon(t){return t==='pdf'?'ti-file-type-pdf':t==='doc'?'ti-file-type-docx':t==='xls'?'ti-file-spreadsheet':'ti-file'}
+function getMember(id){return ALL_MEMBERS.find(m=>m.id===id)}
+
+function avHtml(m,size=32){
+  const s=size+'px';
+  return`<div style="width:${s};height:${s};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.35)}px;font-weight:600;background:var(--${m.ac==='b'?'accent':m.ac==='p'?'purple':m.ac==='a'?'warn':'green'}-bg);color:var(--${m.ac==='b'?'accent':m.ac==='p'?'purple':m.ac==='a'?'warn':'green'});flex-shrink:0">${m.av}</div>`;
+}
+
+function fileListHtml(files){
+  if(!files||!files.length)return'<div style="font-size:11px;color:var(--tm);font-style:italic">Không có tài liệu đính kèm</div>';
+  return files.map(f=>`<div class="att-row">
+    <i class="ti ${fileIcon(f.type)} ai ${f.type}"></i>
+    <span class="an">${f.name}</span>
+    <span class="as">${f.size}</span>
+    <button class="adl" onclick="showToast('Đang tải xuống: ${f.name}','')"><i class="ti ti-download"></i> Tải</button>
+  </div>`).join('');
+}
+
+function memberListHtml(ids,withRsvp=false){
+  return ids.map(id=>{
+    const m=getMember(id);if(!m)return'';
+    const rsvp=withRsvp?MY_RESPONSES[id]||'pending':null;
+    const rsvpBadge=rsvp?`<span class="badge ${rsvp==='accepted'?'b-accepted':rsvp==='declined'?'b-declined':'b-pending'}">${rsvp==='accepted'?'Tham dự':rsvp==='declined'?'Vắng':'Chờ xác nhận'}</span>`:'';
+    return`<div class="mber-row">
+      ${avHtml(m)}
+      <div style="flex:1"><div style="font-size:13px;font-weight:500">${m.name}</div><div style="font-size:11px;color:var(--ts)">${m.title} · ${m.unit}</div></div>
+      ${rsvpBadge}
+    </div>`;
+  }).join('');
+}
+
+function showDetail(id){
+  const m=[...MTG_UBND,...MTG_PB].find(x=>x.id===id);if(!m)return;
+  const[sc,st]=sessBadge(m.sess);
+  const members=m.memberIds.map(id=>getMember(id)).filter(Boolean);
+  document.getElementById('m-title').textContent='Chi tiết cuộc họp';
+  document.getElementById('m-body').innerHTML=`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <span class="badge ${sc}">${st}</span>
+      ${m.unit?`<span class="badge ${m.unit==='Ủy ban'?'b-ubnd':'b-pb'}">${m.unit}</span>`:''}
+      ${m.conflict?'<span class="badge b-conflict"><i class="ti ti-alert-triangle"></i>Trùng lịch</span>':''}
+      <span class="badge ${m.status==='done'?'b-done':'b-soon'}">${m.status==='done'?'Đã kết thúc':'Sắp diễn ra'}</span>
+    </div>
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:16px;line-height:1.4">${m.title}</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+      <div class="invite-row"><i class="ti ti-clock"></i><div><div class="il">Giờ bắt đầu</div><div class="iv">${m.time} · ${st} · ${m.dow} ${m.date}/07/2025</div></div></div>
+      <div class="invite-row"><i class="ti ti-map-pin"></i><div><div class="il">Địa điểm</div><div class="iv">${m.room}</div></div></div>
+      <div class="invite-row"><i class="ti ti-user"></i><div><div class="il">Chủ trì</div><div class="iv">${m.host}</div></div></div>
+      <div class="invite-row"><i class="ti ti-file-text"></i><div><div class="il">Nội dung</div><div class="iv" style="font-weight:400">${m.content}</div></div></div>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-users"></i> Thành phần tham dự (${members.length})</div>
+    ${memberListHtml(m.memberIds,false)}
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="ti ti-paperclip"></i> Tài liệu đính kèm (${m.files?m.files.length:0})</div>
+    ${fileListHtml(m.files)}
+    ${m.conflict?'<div class="notice n-warn" style="margin-top:12px"><i class="ti ti-alert-triangle"></i><span>Lịch họp này trùng buổi với cuộc họp khác tại cùng phòng.</span></div>':''}
+    ${role==='lanhdao'?`<div class="divider"></div><div class="notice n-info" style="margin-bottom:0"><i class="ti ti-phone"></i><span>Cần điều chỉnh lịch họp này? Vui lòng liên hệ <strong>Văn thư – Nguyễn Thị Lan</strong> để cập nhật. Lãnh đạo chỉ theo dõi, không chỉnh sửa trực tiếp.</span></div>`:''}
+  `;
+  document.getElementById('m-foot').innerHTML=role==='lanhdao'
+    ?`<button class="btn-ghost" onclick="closeModal()">Đóng</button><button class="btn btn-primary" onclick="callVanthu()"><i class="ti ti-phone"></i> Gọi văn thư để thay đổi</button>`
+    :`<button class="btn-ghost" onclick="closeModal()">Đóng</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+function callVanthu(){
+  document.getElementById('m-title').textContent='Liên hệ Văn thư';
+  document.getElementById('m-body').innerHTML=`
+    <div style="text-align:center;padding:10px 0 16px">
+      <div class="av av-g" style="width:64px;height:64px;font-size:22px;margin:0 auto 12px">LN</div>
+      <div style="font-size:16px;font-weight:600">Nguyễn Thị Lan</div>
+      <div style="font-size:12px;color:var(--ts);margin-top:2px">Văn thư Ủy ban · VP UBND</div>
+    </div>
+    <div class="att-row" style="background:var(--accent-bg);border-color:#b5d4f4">
+      <i class="ti ti-phone ai" style="color:var(--accent)"></i>
+      <span class="an">Điện thoại</span>
+      <span style="font-size:13px;font-weight:600;color:var(--accent)">0912 345 678</span>
+    </div>
+    <div class="att-row">
+      <i class="ti ti-mail ai" style="color:var(--ts)"></i>
+      <span class="an">Email</span>
+      <span style="font-size:12px;color:var(--ts)">vanthu@ubnd.gov.vn</span>
+    </div>
+    <div class="notice n-info" style="margin-top:12px;margin-bottom:0"><i class="ti ti-info-circle"></i><span>Lãnh đạo báo nội dung cần thay đổi qua điện thoại, văn thư sẽ cập nhật lịch trên hệ thống.</span></div>`;
+  document.getElementById('m-foot').innerHTML=`<button class="btn-ghost" onclick="closeModal()">Đóng</button><a href="tel:0912345678" class="btn btn-accept" style="text-decoration:none" onclick="showToast('Đang gọi Văn thư – Nguyễn Thị Lan...','')"><i class="ti ti-phone-call"></i> Gọi ngay</a>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+function confirmDelete(id){
+  document.getElementById('m-title').textContent='Xóa lịch họp';
+  document.getElementById('m-body').innerHTML=`<div class="notice n-warn"><i class="ti ti-alert-triangle"></i><span>Bạn có chắc muốn xóa lịch họp này? Hành động không thể hoàn tác.</span></div>`;
+  document.getElementById('m-foot').innerHTML=`<button class="btn-ghost" onclick="closeModal()">Hủy</button><button class="btn btn-decline" onclick="closeModal();showToast('Đã xóa lịch họp','warn')"><i class="ti ti-trash"></i> Xóa</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+// ===== FORM BUILDER =====
+function buildMemberSelector(containerId,selectedIds){
+  const el=document.getElementById(containerId);if(!el)return;
+  const inp=el.querySelector('.ms-input');
+  const dd=el.querySelector('.ms-dd');
+  const tags=el.querySelector('.ms-tags');
+  let selected=new Set(selectedIds||[]);
+  function renderTags(){
+    tags.innerHTML=Array.from(selected).map(id=>{
+      const m=getMember(id);if(!m)return'';
+      const col=m.ac==='b'?'b':m.ac==='p'?'p':m.ac==='a'?'a':'g';
+      return`<span class="tag ${col}">${avHtml(m,20)} ${m.name} <span class="rm" onclick="event.stopPropagation();removeMember(${id},'${containerId}')">✕</span></span>`;
+    }).join('');
+  }
+  function renderDropdown(filter=''){
+    const filtered=ALL_MEMBERS.filter(m=>!selected.has(m.id)&&(m.name.toLowerCase().includes(filter.toLowerCase())||m.unit.toLowerCase().includes(filter.toLowerCase())));
+    dd.innerHTML=filtered.length?filtered.map(m=>`<div class="mopt" onclick="addMember(${m.id},'${containerId}')">
+      ${avHtml(m,28)}<div><div class="mn">${m.name}</div><div class="mt">${m.title} · ${m.unit}</div></div>
+    </div>`).join(''):`<div style="padding:12px;font-size:12px;color:var(--tm);text-align:center">Không tìm thấy thành viên</div>`;
+    dd.classList.add('open');
+  }
+  inp.addEventListener('focus',()=>renderDropdown(inp.value));
+  inp.addEventListener('input',()=>renderDropdown(inp.value));
+  document.addEventListener('click',e=>{if(!el.contains(e.target)){dd.classList.remove('open');}});
+  el._selected=selected;
+  el._renderTags=renderTags;
+  el._renderDropdown=renderDropdown;
+  renderTags();
+}
+
+function addMember(id,cid){
+  const el=document.getElementById(cid);
+  el._selected.add(id);
+  el._renderTags();
+  el.querySelector('.ms-input').value='';
+  el._renderDropdown('');
+}
+function removeMember(id,cid){
+  const el=document.getElementById(cid);
+  el._selected.delete(id);
+  el._renderTags();
+}
+
+function buildFileUpload(containerId,initFiles){
+  const el=document.getElementById(containerId);if(!el)return;
+  let files=[...( initFiles||[])];
+  function render(){
+    const fl=el.querySelector('.fu-list');
+    fl.innerHTML=files.map((f,i)=>`<div class="fitem">
+      <i class="ti ${fileIcon(f.type)} ficon ${f.type}"></i>
+      <span class="fname">${f.name}</span>
+      <span class="fsize">${f.size}</span>
+      <button class="fdel" onclick="removeFile(${i},'${containerId}')"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+  }
+  el._files=files;
+  el._render=render;
+  render();
+  el.querySelector('.fu-area').addEventListener('click',()=>fakeUpload(containerId));
+}
+function fakeUpload(cid){
+  const el=document.getElementById(cid);
+  const names=['Tai_lieu_hop.pdf','Bao_cao.docx','Phu_luc.xlsx','Hinh_anh.png'];
+  const types=['pdf','doc','xls','img'];
+  const sizes=['134 KB','89 KB','212 KB','450 KB'];
+  const i=Math.floor(Math.random()*4);
+  el._files.push({name:names[i],size:sizes[i],type:types[i]});
+  el._render();
+  showToast('Đã đính kèm: '+names[i],'');
+}
+function removeFile(idx,cid){
+  const el=document.getElementById(cid);
+  el._files.splice(idx,1);
+  el._render();
+}
+
+function stoggle(btn){btn.closest('.stoggle').querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+function switchTab(el,tid){el.closest('.page').querySelectorAll('.tabi').forEach(t=>t.classList.remove('active'));el.classList.add('active');el.closest('.page').querySelectorAll('.tabc').forEach(t=>t.classList.remove('active'));document.getElementById(tid).classList.add('active');}
+
+function submitForm(back){showToast('Đã lưu lịch họp thành công!','success');setTimeout(()=>loadPage(back),1200);}
+
+function mtgCard(m,cls,viewOnly){
+  const[sc,st]=sessBadge(m.sess);
+  const unitBadge=m.unit?`<span class="badge ${m.unit==='Ủy ban'?'b-ubnd':'b-pb'}">${m.unit}</span>`:'';
+  const actions=viewOnly?'':`<div class="macts"><button class="chip" onclick="event.stopPropagation();showDetail(${m.id})"><i class="ti ti-eye"></i></button><button class="chip" onclick="event.stopPropagation();showToast('Chức năng chỉnh sửa','')"><i class="ti ti-edit"></i></button></div>`;
+  return`<div class="mitem ${cls}" onclick="showDetail(${m.id})">
+    <div class="dblk"><div class="d">${m.date}</div><div class="w">${m.dow}</div></div>
+    <div class="vdiv"></div>
+    <div class="mbody">
+      <div class="mtxt">${m.title}</div>
+      <div class="mmeta">
+        <span><i class="ti ti-clock" style="font-size:11px"></i>${m.time}</span>
+        <span class="badge ${sc}">${st}</span>${unitBadge}
+        <span><i class="ti ti-map-pin" style="font-size:11px"></i>${m.room}</span>
+        ${m.files&&m.files.length?`<span><i class="ti ti-paperclip" style="font-size:11px"></i>${m.files.length} tài liệu</span>`:''}
+        ${m.conflict?'<span class="badge b-conflict"><i class="ti ti-alert-triangle"></i>Trùng</span>':''}
+      </div>
+    </div>${actions}
+  </div>`;
+}
+
+function pbCard(m){
+  const[sc,st]=sessBadge(m.sess);
+  return`<div class="mitem gl" onclick="showDetail(${m.id})">
+    <div class="dblk"><div class="d">${m.date}</div><div class="w">${m.dow}</div></div>
+    <div class="vdiv"></div>
+    <div class="mbody">
+      <div class="mtxt">${m.title}</div>
+      <div class="mmeta">
+        <span><i class="ti ti-clock" style="font-size:11px"></i>${m.time}</span>
+        <span class="badge ${sc}">${st}</span>
+        <span><i class="ti ti-map-pin" style="font-size:11px"></i>${m.room}</span>
+        ${m.files&&m.files.length?`<span><i class="ti ti-paperclip" style="font-size:11px"></i>${m.files.length} tài liệu</span>`:''}
+        <span class="badge ${m.status==='done'?'b-done':'b-soon'}">${m.status==='done'?'Đã qua':'Sắp diễn ra'}</span>
+      </div>
+    </div>
+    <div class="macts">
+      <button class="chip" onclick="event.stopPropagation();showDetail(${m.id})"><i class="ti ti-eye"></i></button>
+      <button class="chip" onclick="event.stopPropagation();showToast('Chỉnh sửa lịch họp','')"><i class="ti ti-edit"></i></button>
+      <button class="chip" style="color:var(--danger)" onclick="event.stopPropagation();confirmDelete(${m.id})"><i class="ti ti-trash"></i></button>
+    </div>
+  </div>`;
+}
+
+function roomCard(r){
+  const scls=r.status==='ok'?'ok':r.status==='busy'?'busy':'conflict';
+  const sb=r.status==='ok'?`<span class="rstatus rs-ok"><i class="ti ti-circle-check" style="font-size:11px"></i> Còn trống</span>`:r.status==='busy'?`<span class="rstatus rs-busy"><i class="ti ti-circle-dot" style="font-size:11px"></i> Đang sử dụng</span>`:`<span class="rstatus rs-warn"><i class="ti ti-alert-triangle" style="font-size:11px"></i> Có cảnh báo</span>`;
+  return`<div class="rcard ${scls}"><div class="rname">${r.name}</div><div class="rcap"><i class="ti ti-users" style="font-size:11px"></i> ${r.loc} · ${r.cap} người</div>${sb}
+    <div class="rsched">${r.sched.length?r.sched.map(s=>`<div class="rsitem"><span class="dot dot-${s.dot}"></span>${s.t} ${s.title}${s.conflict?'<span class="badge b-warn" style="font-size:9px;padding:1px 5px;margin-left:3px">Trùng</span>':''}</div>`).join(''):'<span style="color:var(--tm);font-style:italic;font-size:11px">Chưa có lịch</span>'}</div>
+  </div>`;
+}
+
+function renderCal(){
+  const days=['CN','T2','T3','T4','T5','T6','T7'];
+  const ev=[10,18,25,28];
+  let h=`<div class="cgrid">${days.map(d=>`<div class="chdr">${d}</div>`).join('')}`;
+  for(let i=0;i<2;i++)h+=`<div class="cday om">${29+i}</div>`;
+  for(let d=1;d<=31;d++)h+=`<div class="cday${d===25?' today':''}${ev.includes(d)?' has-ev':''}">${d}</div>`;
+  return h+'</div>';
+}
+
+// ===== CREATE FORM HELPER =====
+function createFormHtml(isUbnd){
+  const conflictNotice=isUbnd?`<div class="notice n-warn"><i class="ti ti-alert-triangle"></i><span>Phòng họp lớn – T3 đã có lịch vào buổi sáng 25/07. Hệ thống cho phép nhiều cuộc họp ngắn nối tiếp — xác nhận với các bên liên quan.</span></div>`:`<div class="notice n-ok"><i class="ti ti-circle-check"></i><span>Lịch họp này do phòng tự tổ chức tại phòng làm việc. Không cần đặt phòng họp qua quản trị.</span></div>`;
+  const roomField=isUbnd?`<div class="frow c2">
+    <div class="fg"><label>Phòng họp</label><select><option>Phòng họp lớn – T3</option><option>Phòng họp nhỏ – T2</option><option>Phòng họp trực tuyến – T1</option><option>Hội trường lớn</option></select></div>
+    <div class="fg"><label>Ước tính số người</label><input type="number" value="20" min="1"/></div>
+  </div>`:`<div class="frow c2">
+    <div class="fg"><label>Chủ trì</label><input type="text" placeholder="Trưởng phòng / người chủ trì"/></div>
+    <div class="fg"><label>Địa điểm họp</label><input type="text" value="Tại phòng làm việc Phòng Kinh tế"/></div>
+  </div>`;
+  const capField=isUbnd?`<div class="frow c2">
+    <div class="fg"><label>Cấp lịch <span class="req">*</span></label><select><option>Lịch Ủy ban</option><option>Lịch Phòng ban</option></select></div>
+    <div class="fg"><label>Đơn vị chủ trì</label><select><option>Văn phòng UBND</option><option>Phòng Nội vụ</option><option>Phòng Tài chính</option><option>Phòng Kinh tế</option></select></div>
+  </div>`:'';
+  return`
+  ${conflictNotice}
+  <div class="card">
+    <div class="fsec">
+      <div class="fst"><i class="ti ti-info-circle"></i> Thông tin cơ bản</div>
+      <div class="fg" style="margin-bottom:10px"><label>Tiêu đề cuộc họp <span class="req">*</span></label><input type="text" placeholder="VD: Họp triển khai kế hoạch tháng 8"/></div>
+      ${capField}
+      ${isUbnd?`<div class="fg" style="margin-bottom:10px"><label>Chủ trì cuộc họp</label><input type="text" placeholder="Họ tên người chủ trì"/></div>`:''}
+      <div class="fg" style="margin-bottom:0"><label>Nội dung / Mục tiêu</label><textarea placeholder="Mô tả ngắn nội dung sẽ thảo luận..."></textarea></div>
+    </div>
+
+    <div class="fsec">
+      <div class="fst"><i class="ti ti-clock"></i> Thời gian</div>
+      <div class="frow c2">
+        <div class="fg"><label>Ngày họp <span class="req">*</span></label><input type="date" value="2025-07-30"/></div>
+        <div class="fg"><label>Giờ bắt đầu <span class="req">*</span></label><input type="time" value="08:00"/></div>
+      </div>
+      <div class="fg"><label>Buổi <span class="req">*</span></label>
+        <div class="stoggle">
+          <button class="sbtn active" onclick="stoggle(this)">Buổi sáng</button>
+          <button class="sbtn" onclick="stoggle(this)">Buổi chiều</button>
+          <button class="sbtn" onclick="stoggle(this)">Cả ngày</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="fsec">
+      <div class="fst"><i class="ti ti-door"></i> Địa điểm & Thành phần</div>
+      ${roomField}
+      <div class="fg" style="margin-bottom:4px"><label>Thành phần tham dự <span class="req">*</span></label>
+        <div id="member-sel-${isUbnd?'vt':'pb'}">
+          <div class="member-search-box"><i class="ti ti-search si"></i><input class="ms-input" type="text" placeholder="Tìm theo tên hoặc đơn vị..."/></div>
+          <div class="member-dropdown ms-dd"></div>
+          <div class="tags-box ms-tags"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fsec">
+      <div class="fst"><i class="ti ti-paperclip"></i> Tài liệu đính kèm</div>
+      <div id="file-upload-${isUbnd?'vt':'pb'}">
+        <div class="file-upload-area fu-area">
+          <i class="ti ti-cloud-upload"></i>
+          <p>Kéo thả file hoặc <strong>nhấn để chọn file</strong></p>
+          <span>Hỗ trợ: PDF, DOCX, XLSX, PNG, JPG · Tối đa 20MB/file</span>
+        </div>
+        <div class="file-list fu-list"></div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-ghost" onclick="loadPage('${isUbnd?'vt-list':'pb-list'}')">Hủy</button>
+      <button class="btn-ghost"><i class="ti ti-device-floppy"></i> Lưu nháp</button>
+      <button class="btn ${isUbnd?'btn-primary':'btn-green'}" onclick="submitForm('${isUbnd?'vt-list':'pb-list'}')"><i class="ti ti-calendar-check"></i> ${isUbnd?'Đăng ký lịch':'Lưu lịch họp'}</button>
+    </div>
+  </div>`;
+}
+
+// ===== PAGE RENDERS =====
+function ldToday(el){
+  el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lịch hôm nay</h2><p>Thứ Sáu, 25/07/2025 · Đ/c Nguyễn Văn Nghĩa – Chủ tịch UBND</p></div><button class="btn btn-primary" onclick="callVanthu()"><i class="ti ti-phone"></i> Liên hệ văn thư</button></div>
+  <div class="notice n-info"><i class="ti ti-eye"></i><span>Chế độ chỉ xem. Khi cần thay đổi lịch họp, vui lòng gọi <strong>Văn thư – Nguyễn Thị Lan</strong> để cập nhật.</span></div>
+  <div class="notice n-warn"><i class="ti ti-alert-triangle"></i><span>2 cuộc họp có lịch trùng buổi sáng tại Phòng họp lớn – T3. Văn phòng đang điều phối.</span></div>
+  <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:10px"><i class="ti ti-building"></i> Lịch Ủy ban</div>
+  <div class="mlist">${MTG_UBND.filter(m=>m.status==='upcoming'&&m.unit==='Ủy ban').map(m=>mtgCard(m,'nl',true)).join('')}</div>
+  <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin:18px 0 10px"><i class="ti ti-users"></i> Lịch Phòng ban liên quan</div>
+  <div class="mlist">${MTG_UBND.filter(m=>m.status==='upcoming'&&m.unit!=='Ủy ban').map(m=>mtgCard(m,'al',true)).join('')}</div>`;}
+
+function ldWeek(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lịch tuần này</h2><p>21/07 – 27/07/2025</p></div></div><div class="mlist">${MTG_UBND.filter(m=>m.status==='upcoming').map(m=>mtgCard(m,'nl',true)).join('')}</div>`;}
+
+function ldCal(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lịch tháng 7/2025</h2><p>Tổng quan lịch họp tháng</p></div></div>
+  <div class="card"><div class="cnav"><button class="btn-ghost" style="padding:5px 10px"><i class="ti ti-chevron-left"></i></button><span class="ml">Tháng 7 / 2025</span><button class="btn-ghost" style="padding:5px 10px"><i class="ti ti-chevron-right"></i></button></div>${renderCal()}</div>
+  <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px">Tất cả lịch tháng 7</div>
+  <div class="mlist">${MTG_UBND.map(m=>mtgCard(m,'nl',true)).join('')}</div>`;}
+
+function vtList(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Danh sách lịch họp</h2><p>Quản lý tất cả lịch họp trong hệ thống</p></div><button class="btn btn-primary" onclick="loadPage('vt-create')"><i class="ti ti-plus"></i> Tạo lịch họp</button></div>
+  <div class="tabrow"><div class="tabi active" onclick="switchTab(this,'tu')">Sắp diễn ra (${MTG_UBND.filter(m=>m.status==='upcoming').length})</div><div class="tabi" onclick="switchTab(this,'td')">Đã qua</div><div class="tabi" onclick="switchTab(this,'ta')">Tất cả</div></div>
+  <div id="tu" class="tabc active"><div class="mlist">${MTG_UBND.filter(m=>m.status==='upcoming').map(m=>mtgCard(m,'nl',false)).join('')}</div></div>
+  <div id="td" class="tabc"><div class="mlist">${MTG_UBND.filter(m=>m.status==='done').map(m=>mtgCard(m,'nl',false)).join('')}</div></div>
+  <div id="ta" class="tabc"><div class="mlist">${MTG_UBND.map(m=>mtgCard(m,'nl',false)).join('')}</div></div>`;}
+
+function vtCreate(p){
+  p.innerHTML=`<div class="ph"><div class="ph-l"><h2>Tạo lịch họp mới</h2><p>Đăng ký lịch họp Ủy ban hoặc Phòng ban</p></div></div>${createFormHtml(true)}`;
+  buildMemberSelector('member-sel-vt',[1,3]);
+  buildFileUpload('file-upload-vt',SAMPLE_FILES.slice(0,1));
+}
+
+function vtCal(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Xem theo tháng</h2><p>Tháng 7/2025</p></div></div><div class="card"><div class="cnav"><button class="btn-ghost" style="padding:5px 10px"><i class="ti ti-chevron-left"></i></button><span class="ml">Tháng 7 / 2025</span><button class="btn-ghost" style="padding:5px 10px"><i class="ti ti-chevron-right"></i></button></div>${renderCal()}</div>`;}
+
+function checkin(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Điểm danh</h2><p>Quản lý quét thẻ điểm danh cuộc họp</p></div></div>
+  <div class="notice n-info"><i class="ti ti-info-circle"></i><span>Thành viên sử dụng thẻ từ/thẻ viết để tự quét điểm danh khi vào phòng họp.</span></div>
+  <div class="card"><div class="fg" style="margin-bottom:12px"><label>Cuộc họp</label><select><option>Họp giao ban tuần – 25/07 08:00</option><option>Đoàn công tác tỉnh – 25/07 10:30</option></select></div>
+  <div style="border:0.5px solid var(--bd);border-radius:8px;overflow:hidden">
+    <table class="tbl"><thead><tr><th>Họ tên</th><th>Đơn vị</th><th>Giờ quét</th><th>Trạng thái</th></tr></thead>
+    <tbody><tr><td>Nguyễn Văn Nghĩa</td><td>Ban lãnh đạo</td><td>07:58</td><td><span class="badge b-soon">Đã điểm danh</span></td></tr>
+    <tr><td>Trần Thị Thu</td><td>Ban lãnh đạo</td><td>08:03</td><td><span class="badge b-soon">Đã điểm danh</span></td></tr>
+    <tr><td>Lê Văn Cường</td><td>Phòng Tài chính</td><td>–</td><td><span class="badge b-done">Chưa điểm danh</span></td></tr>
+    <tr><td>Phạm Thị Dung</td><td>VP UBND</td><td>08:10</td><td><span class="badge b-soon">Đã điểm danh</span></td></tr>
+    </tbody></table>
+  </div></div>`;}
+
+function qtDash(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Tổng quan</h2><p>Tình trạng phòng họp – Thứ Sáu 25/07/2025</p></div></div>
+  <div class="srow c4"><div class="sc"><div class="lbl">Tổng phòng</div><div class="val">5</div></div><div class="sc"><div class="lbl">Còn trống</div><div class="val v-green">3</div></div><div class="sc"><div class="lbl">Đang có lịch</div><div class="val v-amber">2</div></div><div class="sc"><div class="lbl">Cảnh báo trùng</div><div class="val v-red">2</div></div></div>
+  <div class="card"><div class="ctitle"><span><i class="ti ti-door"></i> Tình trạng phòng họp</span><button class="chip" onclick="loadPage('qt-rooms')"><i class="ti ti-arrow-right"></i> Xem tất cả</button></div><div class="rgrid">${ROOMS.slice(0,3).map(roomCard).join('')}</div></div>
+  <div class="card"><div class="ctitle" style="color:var(--danger)"><span><i class="ti ti-alert-triangle"></i> Cảnh báo trùng lịch</span><button class="chip" onclick="loadPage('qt-conflict')"><i class="ti ti-arrow-right"></i> Xem đầy đủ</button></div>
+  <div style="border:0.5px solid var(--bd);border-radius:8px;overflow:hidden"><table class="tbl"><thead><tr><th>Phòng</th><th>Lịch họp</th><th>Giờ</th><th>Buổi</th><th>Xử lý</th></tr></thead>
+  <tbody><tr><td style="font-weight:500">Phòng lớn T3</td><td>Đoàn công tác tỉnh<br><span style="font-size:10px;color:var(--tm)">Ủy ban</span></td><td>10:30</td><td><span class="badge b-am">Sáng</span> <span class="badge b-conflict">Trùng</span></td><td><button class="chip" onclick="showRoomChange()"><i class="ti ti-arrows-exchange"></i> Đổi phòng</button></td></tr>
+  <tr><td style="font-weight:500">Phòng lớn T3</td><td>Giao ban lãnh đạo<br><span style="font-size:10px;color:var(--tm)">Ủy ban</span></td><td>08:00</td><td><span class="badge b-am">Sáng</span></td><td><button class="chip" onclick="showDetail(1)"><i class="ti ti-eye"></i> Xem</button></td></tr></tbody></table></div>
+  <div class="notice n-info" style="margin-top:10px"><i class="ti ti-info-circle"></i><span>Hệ thống chỉ cảnh báo, không khóa cứng.</span></div></div>`;}
+
+function qtRooms(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Quản lý phòng họp</h2><p>Danh sách và tình trạng toàn bộ phòng họp</p></div><button class="btn btn-primary" onclick="showAddRoom()"><i class="ti ti-plus"></i> Thêm phòng</button></div><div class="rgrid" style="grid-template-columns:repeat(3,1fr)">${ROOMS.map(roomCard).join('')}</div>`;}
+
+function qtAll(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Tất cả lịch họp</h2><p>Lịch Ủy ban và Phòng ban trong hệ thống</p></div></div><div class="mlist">${MTG_UBND.map(m=>mtgCard(m,'nl',false)).join('')}</div>`;}
+
+function qtConflict(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Cảnh báo trùng lịch</h2><p>Cùng phòng, cùng buổi — cần điều phối</p></div></div>
+  <div class="notice n-warn"><i class="ti ti-alert-triangle"></i><span>Phát hiện 1 cặp lịch trùng buổi. Hệ thống không khóa lịch — các bên tự liên hệ điều phối.</span></div>
+  <div class="card"><div style="border:0.5px solid var(--bd);border-radius:8px;overflow:hidden"><table class="tbl"><thead><tr><th>Phòng họp</th><th>Lịch 1</th><th>Lịch 2</th><th>Buổi</th><th>Xử lý</th></tr></thead>
+  <tbody><tr><td style="font-weight:500">Phòng họp lớn – T3</td><td>Giao ban lãnh đạo<br><span style="font-size:10px;color:var(--tm)">08:00 · Ủy ban</span></td><td>Đoàn công tác tỉnh<br><span style="font-size:10px;color:var(--tm)">10:30 · Ủy ban</span></td><td><span class="badge b-am">Buổi sáng</span></td>
+  <td style="display:flex;gap:6px;flex-wrap:wrap"><button class="chip" onclick="showRoomChange()"><i class="ti ti-arrows-exchange"></i> Đổi phòng</button><button class="chip" onclick="showToast('Đã xác nhận — các bên đã tự điều phối','success')"><i class="ti ti-check"></i> Xác nhận</button></td></tr></tbody></table></div></div>`;}
+
+function pbList(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lịch họp – Phòng Kinh tế</h2><p>Tự tổ chức tại phòng làm việc, không cần đặt phòng họp</p></div><button class="btn btn-green" onclick="loadPage('pb-create')"><i class="ti ti-plus"></i> Tạo lịch họp</button></div>
+  <div class="srow c3"><div class="sc"><div class="lbl">Tháng này</div><div class="val">3</div></div><div class="sc"><div class="lbl">Sắp diễn ra</div><div class="val v-green">2</div></div><div class="sc"><div class="lbl">Đã qua</div><div class="val v-amber">1</div></div></div>
+  <div class="tabrow"><div class="tabi active" onclick="switchTab(this,'pbu')">Sắp diễn ra (2)</div><div class="tabi" onclick="switchTab(this,'pbd')">Đã qua</div><div class="tabi" onclick="switchTab(this,'pba')">Tất cả</div></div>
+  <div id="pbu" class="tabc active"><div class="mlist">${MTG_PB.filter(m=>m.status==='upcoming').map(pbCard).join('')}</div></div>
+  <div id="pbd" class="tabc"><div class="mlist">${MTG_PB.filter(m=>m.status==='done').map(pbCard).join('')}</div></div>
+  <div id="pba" class="tabc"><div class="mlist">${MTG_PB.map(pbCard).join('')}</div></div>`;}
+
+function pbCreate(p){
+  p.innerHTML=`<div class="ph"><div class="ph-l"><h2>Tạo lịch họp nội bộ</h2><p>Phòng Kinh tế tự tổ chức tại phòng làm việc</p></div></div>${createFormHtml(false)}`;
+  buildMemberSelector('member-sel-pb',[6,7,8]);
+  buildFileUpload('file-upload-pb',[]);
+}
+
+function pbCheckin(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Điểm danh</h2><p>Phòng Kinh tế – Quét thẻ điểm danh</p></div></div>
+  <div class="notice n-info"><i class="ti ti-info-circle"></i><span>Thành viên sử dụng thẻ từ/thẻ viết để tự quét điểm danh khi vào phòng họp nội bộ.</span></div>
+  <div class="card"><div class="fg" style="margin-bottom:12px"><label>Cuộc họp</label><select><option>Họp sơ kết tháng 7 – 25/07 09:30</option><option>Rà soát kế hoạch Q3 – 28/07 14:00</option></select></div>
+  <div style="border:0.5px solid var(--bd);border-radius:8px;overflow:hidden"><table class="tbl"><thead><tr><th>Họ tên</th><th>Giờ quét</th><th>Trạng thái</th></tr></thead>
+  <tbody><tr><td>Nguyễn Văn Hùng</td><td>09:28</td><td><span class="badge b-soon">Đã điểm danh</span></td></tr>
+  <tr><td>Trần Văn Bình</td><td>09:30</td><td><span class="badge b-soon">Đã điểm danh</span></td></tr>
+  <tr><td>Lê Thị Mai</td><td>–</td><td><span class="badge b-done">Chưa điểm danh</span></td></tr>
+  </tbody></table></div></div>`;}
+
+function pbMembers(el){
+  const mbs=[{n:'Nguyễn Văn Hùng',t:'Trưởng phòng',i:'HN',c:'p'},{n:'Trần Thị Thu',t:'Phó phòng',i:'TT',c:'b'},{n:'Trần Văn Bình',t:'Chuyên viên',i:'BT',c:'g'},{n:'Lê Thị Mai',t:'Hành chính',i:'ML',c:'g'},{n:'Phạm Đức Anh',t:'Cán sự',i:'AP',c:'a'}];
+  el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Thành viên Phòng Kinh tế</h2><p>${mbs.length} cán bộ công chức</p></div></div>
+  <div class="card">${mbs.map(m=>`<div class="mber-row"><div class="av av-${m.c}">${m.i}</div><div style="flex:1"><div style="font-size:13px;font-weight:500">${m.n}</div><div style="font-size:11px;color:var(--ts)">${m.t}</div></div></div>`).join('')}</div>`;}
+
+function pbUbnd(el){el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lịch Ủy ban</h2><p>Chỉ xem — để biết lịch lớn và tránh trùng nhân sự</p></div></div>
+  <div class="notice n-info"><i class="ti ti-eye"></i><span>Phòng ban chỉ có quyền xem lịch Ủy ban để tránh trùng nhân sự khi lên lịch nội bộ.</span></div>
+  <div class="mlist">${MTG_UBND.map(m=>mtgCard(m,'nl',true)).join('')}</div>`;}
+
+// ===== THANH VIEN PAGES =====
+function tvInvites(el){
+  // Thành viên id=6 (Trần Văn Bình), lọc các cuộc họp được mời
+  const myMtgs=[...MTG_UBND,...MTG_PB].filter(m=>m.memberIds&&m.memberIds.includes(6));
+  const pending=myMtgs.filter(m=>MY_RESPONSES[m.id]==='pending'||!MY_RESPONSES[m.id]);
+  const upcoming=myMtgs.filter(m=>MY_RESPONSES[m.id]==='accepted');
+
+  el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lời mời họp</h2><p>Trần Văn Bình – Chuyên viên Phòng Kinh tế</p></div></div>
+  <div class="srow c3">
+    <div class="sc"><div class="lbl">Chờ xác nhận</div><div class="val v-amber">${pending.length}</div></div>
+    <div class="sc"><div class="lbl">Đã xác nhận tham dự</div><div class="val v-green">${upcoming.length}</div></div>
+    <div class="sc"><div class="lbl">Tổng lời mời</div><div class="val">${myMtgs.length}</div></div>
+  </div>
+  <div class="notice n-purple"><i class="ti ti-bell"></i><span>Bạn có <strong>${pending.length} lời mời họp</strong> chưa xác nhận. Vui lòng phản hồi để ban tổ chức sắp xếp.</span></div>
+
+  <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:10px"><i class="ti ti-clock" style="color:var(--warn)"></i> Chờ xác nhận (${pending.length})</div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+    ${pending.map(m=>inviteCard(m,true)).join('')}
+  </div>
+
+  <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:10px"><i class="ti ti-check" style="color:#1D9E75"></i> Đã xác nhận tham dự (${upcoming.length})</div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    ${upcoming.map(m=>inviteCard(m,false)).join('')}
+  </div>`;
+}
+
+function inviteCard(m,showActions){
+  const[sc,st]=sessBadge(m.sess);
+  const resp=MY_RESPONSES[m.id]||'pending';
+  const respBadge=resp==='accepted'?'<span class="badge b-accepted"><i class="ti ti-check"></i> Đã xác nhận tham dự</span>':resp==='declined'?'<span class="badge b-declined"><i class="ti ti-x"></i> Đã từ chối</span>':'<span class="badge b-pending"><i class="ti ti-clock"></i> Chờ xác nhận</span>';
+
+  return`<div class="invite-card">
+    <div class="invite-header">
+      <div class="it">${m.title}</div>
+      <div class="im">
+        <span><i class="ti ti-calendar"></i> ${m.dow} ${m.date}/07/2025</span>
+        <span><i class="ti ti-clock"></i> ${m.time} · ${st}</span>
+        ${m.unit?`<span><i class="ti ti-building"></i> ${m.unit}</span>`:''}
+        ${respBadge}
+      </div>
+    </div>
+    <div class="invite-body">
+      <div class="invite-row"><i class="ti ti-map-pin"></i><div><div class="il">Địa điểm</div><div class="iv">${m.room}</div></div></div>
+      <div class="invite-row"><i class="ti ti-user"></i><div><div class="il">Chủ trì</div><div class="iv">${m.host}</div></div></div>
+      <div class="invite-row"><i class="ti ti-file-text"></i><div><div class="il">Nội dung</div><div class="iv" style="font-weight:400">${m.content}</div></div></div>
+      ${m.files&&m.files.length?`<div class="invite-row"><i class="ti ti-paperclip"></i><div><div class="il">Tài liệu đính kèm (${m.files.length} file)</div><div style="margin-top:6px">${fileListHtml(m.files)}</div></div></div>`:''}
+    </div>
+    <div class="invite-actions">
+      ${showActions?`
+        <button class="btn btn-accept" onclick="respondInvite(${m.id},'accepted',this)"><i class="ti ti-check"></i> Xác nhận tham dự</button>
+        <button class="btn btn-decline" onclick="respondInvite(${m.id},'declined',this)"><i class="ti ti-x"></i> Từ chối</button>
+        <button class="chip" style="margin-left:auto" onclick="showDetailTv(${m.id})"><i class="ti ti-info-circle"></i> Chi tiết & Danh sách</button>
+      `:`<span class="badge b-accepted" style="font-size:12px;padding:5px 12px"><i class="ti ti-check"></i> Đã xác nhận tham dự</span>
+        <button class="chip" style="margin-left:auto" onclick="showDetailTv(${m.id})"><i class="ti ti-info-circle"></i> Xem chi tiết</button>`}
+    </div>
+  </div>`;
+}
+
+function respondInvite(id,resp,btn){
+  MY_RESPONSES[id]=resp;
+  if(resp==='accepted'){
+    showToast('Đã xác nhận tham dự cuộc họp!','success');
+  } else {
+    document.getElementById('m-title').textContent='Lý do từ chối (tùy chọn)';
+    document.getElementById('m-body').innerHTML=`<div class="fg"><label>Lý do từ chối</label><textarea placeholder="VD: Bận công tác, có lịch trùng..."></textarea></div>`;
+    document.getElementById('m-foot').innerHTML=`<button class="btn-ghost" onclick="MY_RESPONSES[${id}]='pending';closeModal()">Hủy</button><button class="btn btn-decline" onclick="closeModal();showToast('Đã gửi phản hồi từ chối','warn');tvInvites(document.querySelector('.page.active'))"><i class="ti ti-send"></i> Gửi từ chối</button>`;
+    document.getElementById('modal').classList.add('show');
+    return;
+  }
+  tvInvites(btn.closest('.page'));
+}
+
+function showDetailTv(id){
+  const m=[...MTG_UBND,...MTG_PB].find(x=>x.id===id);if(!m)return;
+  const[sc,st]=sessBadge(m.sess);
+  const members=m.memberIds.map(id=>getMember(id)).filter(Boolean);
+  // Mock responses for display
+  const mockRsp={1:'accepted',2:'pending',3:'accepted',4:'accepted',5:'pending',6:'accepted',7:'pending',8:'accepted',9:'pending',10:'accepted'};
+  document.getElementById('m-title').textContent='Chi tiết & Danh sách tham dự';
+  document.getElementById('m-body').innerHTML=`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge ${sc}">${st}</span>
+      ${m.unit?`<span class="badge ${m.unit==='Ủy ban'?'b-ubnd':'b-pb'}">${m.unit}</span>`:''}
+    </div>
+    <h3 style="font-size:15px;font-weight:600;margin-bottom:14px">${m.title}</h3>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <div class="invite-row"><i class="ti ti-clock"></i><div><div class="il">Giờ bắt đầu</div><div class="iv">${m.time} · ${st} · ${m.dow} ${m.date}/07/2025</div></div></div>
+      <div class="invite-row"><i class="ti ti-map-pin"></i><div><div class="il">Địa điểm</div><div class="iv">${m.room}</div></div></div>
+      <div class="invite-row"><i class="ti ti-user"></i><div><div class="il">Chủ trì</div><div class="iv">${m.host}</div></div></div>
+    </div>
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin:10px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti ti-users"></i> Danh sách tham dự (${members.length})</div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;font-size:11px">
+      <span style="background:var(--green-bg);color:#0F6E56;padding:3px 10px;border-radius:10px;font-weight:500"><i class="ti ti-check"></i> Tham dự: ${members.filter(mm=>mockRsp[mm.id]==='accepted').length}</span>
+      <span style="background:var(--warn-bg);color:#854F0B;padding:3px 10px;border-radius:10px;font-weight:500"><i class="ti ti-clock"></i> Chưa phản hồi: ${members.filter(mm=>mockRsp[mm.id]==='pending'||!mockRsp[mm.id]).length}</span>
+    </div>
+    ${members.map(mm=>{
+      const r=mockRsp[mm.id]||'pending';
+      return`<div class="mber-row">${avHtml(mm)}
+        <div style="flex:1"><div style="font-size:13px;font-weight:500">${mm.name}</div><div style="font-size:11px;color:var(--ts)">${mm.title} · ${mm.unit}</div></div>
+        <span class="badge ${r==='accepted'?'b-accepted':r==='declined'?'b-declined':'b-pending'}">${r==='accepted'?'Tham dự':r==='declined'?'Từ chối':'Chờ phản hồi'}</span>
+      </div>`;
+    }).join('')}
+    <div class="divider"></div>
+    <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin:10px 0 8px;display:flex;align-items:center;gap:6px"><i class="ti ti-paperclip"></i> Tài liệu đính kèm</div>
+    ${fileListHtml(m.files)}`;
+  document.getElementById('m-foot').innerHTML=`<button class="btn-ghost" onclick="closeModal()">Đóng</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+function tvUpcoming(el){
+  const myMtgs=[...MTG_UBND,...MTG_PB].filter(m=>m.memberIds&&m.memberIds.includes(6)&&MY_RESPONSES[m.id]==='accepted');
+  el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lịch sắp tới của tôi</h2><p>Các cuộc họp đã xác nhận tham dự</p></div></div>
+  <div class="notice n-ok"><i class="ti ti-calendar-check"></i><span>Bạn đã xác nhận tham dự <strong>${myMtgs.length} cuộc họp</strong> sắp tới.</span></div>
+  <div style="display:flex;flex-direction:column;gap:10px">${myMtgs.length?myMtgs.map(m=>inviteCard(m,false)).join(''):'<div style="text-align:center;padding:40px;color:var(--tm)"><i class="ti ti-calendar-off" style="font-size:32px;display:block;margin-bottom:10px"></i><p>Chưa có lịch họp nào được xác nhận.</p></div>'}</div>`;}
+
+function tvHistory(el){
+  const done=MTG_UBND.filter(m=>m.memberIds&&m.memberIds.includes(6)&&m.status==='done');
+  el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Lịch sử cuộc họp</h2><p>Các cuộc họp đã tham dự</p></div></div>
+  <div class="mlist">${done.length?done.map(m=>`<div class="mitem bl" onclick="showDetail(${m.id})">
+    <div class="dblk"><div class="d">${m.date}</div><div class="w">${m.dow}</div></div><div class="vdiv"></div>
+    <div class="mbody"><div class="mtxt">${m.title}</div>
+    <div class="mmeta"><span><i class="ti ti-clock" style="font-size:11px"></i>${m.time}</span><span class="badge b-done">Đã qua</span><span><i class="ti ti-map-pin" style="font-size:11px"></i>${m.room}</span>${m.files&&m.files.length?`<span><i class="ti ti-paperclip" style="font-size:11px"></i>${m.files.length} tài liệu</span>`:''}</div></div>
+    <button class="chip" onclick="event.stopPropagation();showDetail(${m.id})"><i class="ti ti-file-text"></i> Biên bản</button>
+  </div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--tm)"><i class="ti ti-history" style="font-size:32px;display:block;margin-bottom:10px"></i><p>Chưa có lịch sử cuộc họp.</p></div>'}</div>`;}
+
+function tvSearch(el){
+  el.innerHTML=`<div class="ph"><div class="ph-l"><h2>Tìm kiếm lịch họp</h2><p>Tra cứu lịch họp trong hệ thống</p></div></div>
+  <div class="card">
+    <div class="frow c2">
+      <div class="fg"><label>Từ khóa tiêu đề</label><input type="text" placeholder="VD: giao ban, biên chế..."/></div>
+      <div class="fg"><label>Đơn vị</label><select><option>Tất cả đơn vị</option><option>Ủy ban nhân dân</option><option>Phòng Kinh tế</option><option>Phòng Nội vụ</option><option>Phòng Tài chính</option></select></div>
+    </div>
+    <div class="frow c3">
+      <div class="fg"><label>Từ ngày</label><input type="date" value="2025-07-01"/></div>
+      <div class="fg"><label>Đến ngày</label><input type="date" value="2025-07-31"/></div>
+      <div class="fg"><label>Buổi</label><select><option>Tất cả</option><option>Buổi sáng</option><option>Buổi chiều</option><option>Cả ngày</option></select></div>
+    </div>
+    <div class="form-actions" style="margin-top:0;border-top:none;padding-top:0">
+      <button class="btn btn-primary" onclick="showToast('Tìm thấy 5 kết quả','')"><i class="ti ti-search"></i> Tìm kiếm</button>
+    </div>
+  </div>
+  <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px">Kết quả (${[...MTG_UBND,...MTG_PB].length})</div>
+  <div class="mlist">${[...MTG_UBND,...MTG_PB].map(m=>`<div class="mitem bl" onclick="showDetailTv(${m.id})">
+    <div class="dblk"><div class="d">${m.date}</div><div class="w">${m.dow}</div></div><div class="vdiv"></div>
+    <div class="mbody"><div class="mtxt">${m.title}</div>
+    <div class="mmeta"><span><i class="ti ti-clock" style="font-size:11px"></i>${m.time}</span><span class="badge ${sessBadge(m.sess)[0]}">${sessBadge(m.sess)[1]}</span><span><i class="ti ti-map-pin" style="font-size:11px"></i>${m.room}</span>${m.files&&m.files.length?`<span><i class="ti ti-paperclip" style="font-size:11px"></i>${m.files.length} tài liệu</span>`:''}</div></div>
+    <button class="chip" onclick="event.stopPropagation();showDetailTv(${m.id})"><i class="ti ti-eye"></i> Xem</button>
+  </div>`).join('')}</div>`;}
+
+// ===== THANH VIEN CALENDAR PAGES =====
+// My meetings = all MTG where memberIds includes 6
+function myMtgAll(){ return[...MTG_UBND,...MTG_PB].filter(m=>m.memberIds&&m.memberIds.includes(6)); }
+
+// ---- THEO NGÀY ----
+function tvDay(el){
+  const all=myMtgAll();
+  // Group by date number for demo (using .date field)
+  const days=[
+    {label:'Thứ Sáu, 25/07/2025',dateKey:'25',isToday:true},
+    {label:'Thứ Hai, 28/07/2025',dateKey:'28',isToday:false},
+    {label:'Thứ Năm, 10/07/2025',dateKey:'10',isToday:false},
+    {label:'Thứ Sáu, 18/07/2025',dateKey:'18',isToday:false},
+  ];
+  // Build timeline hours 7-18
+  function timelineForDay(dateKey){
+    const mtgs=all.filter(m=>m.date===dateKey);
+    if(!mtgs.length) return`<div style="text-align:center;padding:24px;color:var(--tm);font-size:12px"><i class="ti ti-calendar-off" style="font-size:24px;display:block;margin-bottom:6px"></i>Không có cuộc họp</div>`;
+    const hours=Array.from({length:12},(_,i)=>i+7);
+    let html=`<div style="display:flex;flex-direction:column;gap:0">`;
+    hours.forEach(h=>{
+      const hStr=h.toString().padStart(2,'0')+':00';
+      const hMtgs=mtgs.filter(m=>{
+        const mh=parseInt(m.time.split(':')[0]);
+        return mh===h;
+      });
+      html+=`<div style="display:flex;gap:0;min-height:${hMtgs.length?'auto':'36px'}">
+        <div style="width:52px;padding:0 8px 0 0;text-align:right;font-size:11px;color:var(--tm);padding-top:10px;flex-shrink:0">${hStr}</div>
+        <div style="width:0.5px;background:var(--bd);flex-shrink:0"></div>
+        <div style="flex:1;padding:4px 0 4px 10px;${hMtgs.length?'':''}">
+          ${hMtgs.map(m=>{
+            const[sc,st]=sessBadge(m.sess);
+            const resp=MY_RESPONSES[m.id]||'pending';
+            const lc=resp==='accepted'?'#1D9E75':resp==='declined'?'var(--danger)':'var(--warn)';
+            return`<div onclick="showDetailTv(${m.id})" style="background:${resp==='accepted'?'var(--green-bg)':resp==='declined'?'var(--danger-bg)':'var(--warn-bg)'};border-left:3px solid ${lc};border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:4px;cursor:pointer;transition:opacity .12s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              <div style="font-size:12px;font-weight:600;color:${lc}">${m.time} · <span class="badge ${sc}" style="font-size:10px">${st}</span></div>
+              <div style="font-size:13px;font-weight:500;margin:3px 0;color:var(--tp)">${m.title}</div>
+              <div style="font-size:11px;color:var(--ts);display:flex;align-items:center;gap:8px">
+                <span><i class="ti ti-map-pin" style="font-size:11px"></i>${m.room}</span>
+                ${m.files&&m.files.length?`<span><i class="ti ti-paperclip" style="font-size:11px"></i>${m.files.length}</span>`:''}
+                <span class="badge ${resp==='accepted'?'b-accepted':resp==='declined'?'b-declined':'b-pending'}" style="font-size:10px">${resp==='accepted'?'Tham dự':resp==='declined'?'Từ chối':'Chờ xác nhận'}</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    });
+    return html+'</div>';
+  }
+
+  el.innerHTML=`
+  <div class="ph">
+    <div class="ph-l"><h2>Lịch theo ngày</h2><p>Xem lịch họp chi tiết từng ngày</p></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-ghost" style="padding:6px 10px"><i class="ti ti-chevron-left"></i></button>
+      <select style="font-size:12px;padding:6px 10px;border-radius:var(--r);border:0.5px solid var(--bds);background:#fff;font-family:inherit" id="day-sel" onchange="switchDay(this.value)">
+        ${days.map(d=>`<option value="${d.dateKey}" ${d.isToday?'selected':''}>${d.label}${d.isToday?' (Hôm nay)':''}</option>`).join('')}
+      </select>
+      <button class="btn-ghost" style="padding:6px 10px"><i class="ti ti-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <div class="srow c3">
+    <div class="sc"><div class="lbl">Cuộc họp hôm nay</div><div class="val v-blue">${all.filter(m=>m.date==='25').length}</div></div>
+    <div class="sc"><div class="lbl">Đã xác nhận</div><div class="val v-green">${all.filter(m=>m.date==='25'&&MY_RESPONSES[m.id]==='accepted').length}</div></div>
+    <div class="sc"><div class="lbl">Chờ xác nhận</div><div class="val v-amber">${all.filter(m=>m.date==='25'&&(MY_RESPONSES[m.id]==='pending'||!MY_RESPONSES[m.id])).length}</div></div>
+  </div>
+
+  <div class="card" id="day-timeline">
+    <div class="ctitle"><span><i class="ti ti-clock"></i> Thứ Sáu, 25/07/2025 <span style="font-size:10px;background:var(--navy);color:#fff;padding:2px 7px;border-radius:10px;margin-left:4px">Hôm nay</span></span></div>
+    ${timelineForDay('25')}
+  </div>`;
+
+  // store function for switching
+  el._switchDay=function(dk){
+    const d=days.find(x=>x.dateKey===dk)||days[0];
+    const c=el.querySelector('#day-timeline');
+    if(!c)return;
+    const mtgsCount=all.filter(m=>m.date===dk).length;
+    c.innerHTML=`<div class="ctitle"><span><i class="ti ti-clock"></i> ${d.label}${d.isToday?' <span style="font-size:10px;background:var(--navy);color:#fff;padding:2px 7px;border-radius:10px;margin-left:4px">Hôm nay</span>':''}</span><span style="font-size:11px;color:var(--ts)">${mtgsCount} cuộc họp</span></div>${timelineForDay(dk)}`;
+  };
+}
+
+function switchDay(dk){ const p=document.querySelector('.page.active');if(p&&p._switchDay)p._switchDay(dk); }
+
+// ---- THEO TUẦN ----
+function tvWeek(el){
+  const all=myMtgAll();
+  const weekDays=[
+    {label:'T2',full:'Thứ Hai 21/07',dateKey:'21',num:21},
+    {label:'T3',full:'Thứ Ba 22/07',dateKey:'22',num:22},
+    {label:'T4',full:'Thứ Tư 23/07',dateKey:'23',num:23},
+    {label:'T5',full:'Thứ Năm 24/07',dateKey:'24',num:24},
+    {label:'T6',full:'Thứ Sáu 25/07',dateKey:'25',num:25,isToday:true},
+    {label:'T7',full:'Thứ Bảy 26/07',dateKey:'26',num:26},
+    {label:'CN',full:'Chủ nhật 27/07',dateKey:'27',num:27},
+  ];
+  const hours=[7,8,9,10,11,12,13,14,15,16,17];
+
+  function cellContent(dateKey,hour){
+    const hMtgs=all.filter(m=>m.date===dateKey&&parseInt(m.time.split(':')[0])===hour);
+    if(!hMtgs.length)return'';
+    return hMtgs.map(m=>{
+      const resp=MY_RESPONSES[m.id]||'pending';
+      const bg=resp==='accepted'?'var(--green-bg)':resp==='declined'?'var(--danger-bg)':'var(--warn-bg)';
+      const lc=resp==='accepted'?'#1D9E75':resp==='declined'?'var(--danger)':'var(--warn)';
+      return`<div onclick="showDetailTv(${m.id})" style="background:${bg};border-left:2px solid ${lc};border-radius:0 4px 4px 0;padding:4px 6px;font-size:10px;cursor:pointer;margin-bottom:2px;line-height:1.3" title="${m.title}">
+        <div style="font-weight:600;color:${lc}">${m.time}</div>
+        <div style="color:var(--tp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px">${m.title}</div>
+      </div>`;
+    }).join('');
+  }
+
+  el.innerHTML=`
+  <div class="ph">
+    <div class="ph-l"><h2>Lịch theo tuần</h2><p>Tuần 21/07 – 27/07/2025</p></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-ghost" style="padding:6px 10px"><i class="ti ti-chevron-left"></i> Tuần trước</button>
+      <button class="btn-ghost" style="padding:6px 10px">Tuần sau <i class="ti ti-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <div class="srow c4">
+    <div class="sc"><div class="lbl">Tuần này</div><div class="val v-blue">${all.length} họp</div></div>
+    <div class="sc"><div class="lbl">Đã xác nhận</div><div class="val v-green">${all.filter(m=>MY_RESPONSES[m.id]==='accepted').length}</div></div>
+    <div class="sc"><div class="lbl">Chờ xác nhận</div><div class="val v-amber">${all.filter(m=>MY_RESPONSES[m.id]==='pending'||!MY_RESPONSES[m.id]).length}</div></div>
+    <div class="sc"><div class="lbl">Từ chối</div><div class="val v-red">${all.filter(m=>MY_RESPONSES[m.id]==='declined').length}</div></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:640px">
+        <thead>
+          <tr style="background:var(--s0)">
+            <th style="width:48px;padding:10px 8px;font-size:11px;color:var(--tm);border-right:0.5px solid var(--bd);border-bottom:0.5px solid var(--bd)"></th>
+            ${weekDays.map(d=>`<th style="padding:10px 6px;text-align:center;border-right:0.5px solid var(--bd);border-bottom:0.5px solid var(--bd);${d.isToday?'background:var(--accent-bg)':''}">
+              <div style="font-size:10px;color:var(--tm);font-weight:500">${d.label}</div>
+              <div style="font-size:${d.isToday?'16':'14'}px;font-weight:${d.isToday?'700':'500'};color:${d.isToday?'var(--accent)':'var(--tp)'};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:2px auto 0;${d.isToday?'background:var(--accent);color:#fff;':''}">${d.num}</div>
+            </th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${hours.map(h=>`<tr>
+            <td style="padding:4px 8px;font-size:10px;color:var(--tm);border-right:0.5px solid var(--bd);border-bottom:0.5px solid var(--bd);text-align:right;vertical-align:top;padding-top:6px">${h.toString().padStart(2,'0')}:00</td>
+            ${weekDays.map(d=>`<td style="padding:3px;border-right:0.5px solid var(--bd);border-bottom:0.5px solid var(--bd);vertical-align:top;min-height:36px;${d.isToday?'background:rgba(59,125,216,.03)':''}">${cellContent(d.dateKey,h)}</td>`).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 14px;border-top:0.5px solid var(--bd);display:flex;gap:12px;font-size:11px;color:var(--ts)">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:#1D9E75;border-radius:2px;display:inline-block"></span>Đã xác nhận</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:var(--warn);border-radius:2px;display:inline-block"></span>Chờ xác nhận</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:3px;background:var(--danger);border-radius:2px;display:inline-block"></span>Từ chối</span>
+    </div>
+  </div>`;
+}
+
+// ---- THEO THÁNG ----
+function tvMonth(el){
+  const all=myMtgAll();
+  const eventDays=[10,18,25,28];
+  const days7=['CN','T2','T3','T4','T5','T6','T7'];
+
+  // Build month grid with event dots
+  function buildMonthGrid(){
+    let h=`<div class="cgrid">${days7.map(d=>`<div class="chdr">${d}</div>`).join('')}`;
+    // July 2025 offset = 2 (starts Tuesday)
+    for(let i=0;i<2;i++) h+=`<div class="cday om" style="font-size:11px">${29+i}</div>`;
+    for(let d=1;d<=31;d++){
+      const isT=d===25;
+      const dayMtgs=all.filter(m=>parseInt(m.date)===d);
+      const accepted=dayMtgs.filter(m=>MY_RESPONSES[m.id]==='accepted').length;
+      const pending=dayMtgs.filter(m=>MY_RESPONSES[m.id]==='pending'||!MY_RESPONSES[m.id]).length;
+      const dots=dayMtgs.length?`<div style="display:flex;gap:2px;margin-top:2px;justify-content:center">
+        ${accepted>0?`<span style="width:5px;height:5px;border-radius:50%;background:#1D9E75;display:inline-block"></span>`:''}
+        ${pending>0?`<span style="width:5px;height:5px;border-radius:50%;background:var(--warn);display:inline-block"></span>`:''}
+      </div>`:'';
+      h+=`<div class="cday${isT?' today':''}" onclick="showDayPopover(${d})" style="flex-direction:column;gap:0;cursor:${dayMtgs.length?'pointer':'default'};${dayMtgs.length&&!isT?'background:var(--s1);':''}">
+        <span>${d}</span>${dots}
+      </div>`;
+    }
+    return h+'</div>';
+  }
+
+  el.innerHTML=`
+  <div class="ph">
+    <div class="ph-l"><h2>Lịch theo tháng</h2><p>Tháng 7/2025 · Trần Văn Bình</p></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-ghost" style="padding:6px 10px"><i class="ti ti-chevron-left"></i> Tháng trước</button>
+      <button class="btn-ghost" style="padding:6px 10px">Tháng sau <i class="ti ti-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <div class="srow c4">
+    <div class="sc"><div class="lbl">Tổng cuộc họp tháng 7</div><div class="val v-blue">${all.length}</div></div>
+    <div class="sc"><div class="lbl">Đã xác nhận</div><div class="val v-green">${all.filter(m=>MY_RESPONSES[m.id]==='accepted').length}</div></div>
+    <div class="sc"><div class="lbl">Chờ xác nhận</div><div class="val v-amber">${all.filter(m=>MY_RESPONSES[m.id]==='pending'||!MY_RESPONSES[m.id]).length}</div></div>
+    <div class="sc"><div class="lbl">Ngày có lịch họp</div><div class="val">${[...new Set(all.map(m=>m.date))].length}</div></div>
+  </div>
+
+  <div class="card">
+    <div class="cnav">
+      <button class="btn-ghost" style="padding:5px 10px"><i class="ti ti-chevron-left"></i></button>
+      <span class="ml">Tháng 7 / 2025</span>
+      <button class="btn-ghost" style="padding:5px 10px"><i class="ti ti-chevron-right"></i></button>
+    </div>
+    ${buildMonthGrid()}
+    <div style="margin-top:12px;padding-top:10px;border-top:0.5px solid var(--bd);display:flex;gap:14px;font-size:11px;color:var(--ts)">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#1D9E75;display:inline-block"></span>Đã xác nhận tham dự</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block"></span>Chờ xác nhận</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--navy);display:inline-block"></span>Hôm nay</span>
+    </div>
+  </div>
+
+  <div id="month-day-detail"></div>`;
+
+  // store all for popover
+  el._all=all;
+}
+
+function showDayPopover(d){
+  const el=document.querySelector('.page.active');
+  const all=el&&el._all?el._all:myMtgAll();
+  const dayMtgs=all.filter(m=>parseInt(m.date)===d);
+  if(!dayMtgs.length)return;
+  const detail=document.getElementById('month-day-detail');
+  if(!detail)return;
+  const dowMap={10:'Thứ Năm',18:'Thứ Sáu',25:'Thứ Sáu',28:'Thứ Hai'};
+  const dow=dowMap[d]||'';
+  detail.innerHTML=`
+  <div style="font-size:11px;font-weight:600;color:var(--ts);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+    <i class="ti ti-calendar-event"></i> ${dow}, ${d}/07/2025 · ${dayMtgs.length} cuộc họp
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    ${dayMtgs.map(m=>{
+      const[sc,st]=sessBadge(m.sess);
+      const resp=MY_RESPONSES[m.id]||'pending';
+      return`<div class="mitem bl" onclick="showDetailTv(${m.id})" style="border-left-color:${resp==='accepted'?'#1D9E75':resp==='declined'?'var(--danger)':'var(--warn)'}">
+        <div class="dblk"><div class="d" style="font-size:15px">${m.time.split(':')[0]}</div><div class="w">${m.time}</div></div>
+        <div class="vdiv"></div>
+        <div class="mbody">
+          <div class="mtxt">${m.title}</div>
+          <div class="mmeta">
+            <span class="badge ${sc}">${st}</span>
+            <span><i class="ti ti-map-pin" style="font-size:11px"></i>${m.room}</span>
+            <span class="badge ${resp==='accepted'?'b-accepted':resp==='declined'?'b-declined':'b-pending'}">${resp==='accepted'?'Tham dự':resp==='declined'?'Từ chối':'Chờ xác nhận'}</span>
+            ${m.files&&m.files.length?`<span><i class="ti ti-paperclip" style="font-size:11px"></i>${m.files.length} tài liệu</span>`:''}
+          </div>
+        </div>
+        <button class="chip" onclick="event.stopPropagation();showDetailTv(${m.id})"><i class="ti ti-eye"></i> Chi tiết</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ===== MODALS =====
+function showRoomChange(){
+  document.getElementById('m-title').textContent='Đổi phòng họp';
+  document.getElementById('m-body').innerHTML=`<p style="font-size:12px;color:var(--ts);margin-bottom:14px">Chọn phòng thay thế cho <strong>Đoàn công tác tỉnh</strong> – 10:30 buổi sáng</p>
+  <div class="fg" style="margin-bottom:12px"><label>Phòng họp thay thế</label><select><option>Phòng họp nhỏ – T2 (15 người · Còn trống)</option><option>Phòng họp trực tuyến – T1 (20 người · Còn trống)</option></select></div>
+  <div class="notice n-ok"><i class="ti ti-circle-check"></i><span>Phòng được chọn còn trống buổi sáng 25/07. Có thể xếp lịch.</span></div>`;
+  document.getElementById('m-foot').innerHTML=`<button class="btn-ghost" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="closeModal();showToast('Đã đổi phòng thành công. Đã thông báo đến văn thư liên quan.','success')"><i class="ti ti-check"></i> Xác nhận đổi phòng</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+function showAddRoom(){
+  document.getElementById('m-title').textContent='Thêm phòng họp mới';
+  document.getElementById('m-body').innerHTML=`<div class="frow c2"><div class="fg"><label>Tên phòng</label><input type="text" placeholder="VD: Phòng họp B"/></div><div class="fg"><label>Vị trí</label><input type="text" placeholder="VD: Tầng 2"/></div></div>
+  <div class="fg" style="margin-bottom:10px"><label>Sức chứa (người)</label><input type="number" value="20"/></div>
+  <div class="fg"><label>Trang thiết bị</label><textarea placeholder="Máy chiếu, bảng trắng, điều hòa..."></textarea></div>`;
+  document.getElementById('m-foot').innerHTML=`<button class="btn-ghost" onclick="closeModal()">Hủy</button><button class="btn btn-primary" onclick="closeModal();showToast('Đã thêm phòng họp mới','success')"><i class="ti ti-plus"></i> Thêm phòng</button>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+let _t;
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  t.className='toast show'+(type?' '+type:'');
+  document.getElementById('toast-ico').className=type==='success'?'ti ti-check':type==='warn'?'ti ti-alert-triangle':'ti ti-info-circle';
+  clearTimeout(_t);_t=setTimeout(()=>t.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
