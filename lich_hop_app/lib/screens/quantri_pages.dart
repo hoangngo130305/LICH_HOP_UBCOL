@@ -280,8 +280,11 @@ class QtMembersPage extends StatefulWidget {
 }
 
 class _QtMembersPageState extends State<QtMembersPage> {
+  static const _pageSize = 10;
   bool _loading = true;
   int _tab = 0;
+  int _accountPage = 0;
+  int _memberPage = 0;
 
   @override
   void initState() {
@@ -300,6 +303,18 @@ class _QtMembersPageState extends State<QtMembersPage> {
       ..sort((a, b) => a.unit == b.unit
           ? a.name.compareTo(b.name)
           : a.unit.compareTo(b.unit));
+
+    final accountPageCount =
+        (accounts.length / _pageSize).ceil().clamp(1, 1 << 30);
+    final accountPage = _accountPage.clamp(0, accountPageCount - 1);
+    final shownAccounts =
+        accounts.skip(accountPage * _pageSize).take(_pageSize).toList();
+
+    final memberPageCount =
+        (members.length / _pageSize).ceil().clamp(1, 1 << 30);
+    final memberPage = _memberPage.clamp(0, memberPageCount - 1);
+    final shownMembers =
+        members.skip(memberPage * _pageSize).take(_pageSize).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,9 +348,16 @@ class _QtMembersPageState extends State<QtMembersPage> {
             AppCard(
               child: Column(
                 children: [
-                  for (var i = 0; i < accounts.length; i++)
-                    _AccountRow(accounts[i],
-                        divider: i != accounts.length - 1),
+                  for (var i = 0; i < shownAccounts.length; i++)
+                    _AccountRow(shownAccounts[i],
+                        divider: i != shownAccounts.length - 1),
+                  Paginator(
+                    page: accountPage,
+                    pageCount: accountPageCount,
+                    totalItems: accounts.length,
+                    pageSize: _pageSize,
+                    onChanged: (p) => setState(() => _accountPage = p),
+                  ),
                 ],
               ),
             )
@@ -345,11 +367,19 @@ class _QtMembersPageState extends State<QtMembersPage> {
           AppCard(
             child: Column(
               children: [
-                for (var i = 0; i < members.length; i++)
-                  MemberRow(members[i],
-                      divider: i != members.length - 1,
-                      onEdit: () => showEditMemberDialog(context, members[i])
-                          .then((_) => setState(() {}))),
+                for (var i = 0; i < shownMembers.length; i++)
+                  MemberRow(shownMembers[i],
+                      divider: i != shownMembers.length - 1,
+                      onEdit: () =>
+                          showEditMemberDialog(context, shownMembers[i])
+                              .then((_) => setState(() {}))),
+                Paginator(
+                  page: memberPage,
+                  pageCount: memberPageCount,
+                  totalItems: members.length,
+                  pageSize: _pageSize,
+                  onChanged: (p) => setState(() => _memberPage = p),
+                ),
               ],
             ),
           ),
