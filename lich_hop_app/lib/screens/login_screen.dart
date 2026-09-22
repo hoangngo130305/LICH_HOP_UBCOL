@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
-
-String _demoEmail(UserRole role) => switch (role) {
-      UserRole.lanhDao => 'lanhdao@caungolanh.gov.vn',
-      UserRole.vanThu => 'vanthu.ubnd@caungolanh.gov.vn',
-      UserRole.quanTri => 'superadmin@caungolanh.gov.vn',
-      UserRole.phongBan => 'vanthu.vanphong@caungolanh.gov.vn',
-      UserRole.thanhVien => 'canbo@caungolanh.gov.vn',
-    };
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,7 +12,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  UserRole? _selected;
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _passFocus = FocusNode();
@@ -33,14 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _passCtrl.dispose();
     _passFocus.dispose();
     super.dispose();
-  }
-
-  void _pickRole(UserRole role) {
-    setState(() {
-      _selected = role;
-      _emailCtrl.text = _demoEmail(role);
-    });
-    _passFocus.requestFocus();
   }
 
   Future<void> _login() async {
@@ -113,36 +95,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           style:
                               TextStyle(fontSize: 11.5, color: AppColors.tm)),
                       const SizedBox(height: 22),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text('Chọn nhanh vai trò mẫu (tùy chọn)',
-                            style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.ts)),
-                      ),
-                      const SizedBox(height: 10),
-                      LayoutBuilder(builder: (context, c) {
-                        final w = (c.maxWidth - 8) / 2;
-                        return Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final role in UserRole.values)
-                              SizedBox(
-                                width: role == UserRole.thanhVien
-                                    ? c.maxWidth
-                                    : w,
-                                child: _RoleButton(
-                                  role,
-                                  selected: _selected == role,
-                                  onTap: () => _pickRole(role),
-                                ),
-                              ),
-                          ],
-                        );
-                      }),
-                      const SizedBox(height: 18),
                       TextField(
                         controller: _emailCtrl,
                         keyboardType: TextInputType.text,
@@ -172,12 +124,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _selected == null
-                            ? 'Nhập email/mật khẩu tài khoản của bạn'
-                            : 'Tài khoản mẫu: ${_selected!.label}',
-                        style: const TextStyle(
-                            fontSize: 11.5, color: AppColors.tm),
+                      const Text(
+                        'Nhập tên đăng nhập/email và mật khẩu tài khoản của bạn',
+                        style: TextStyle(fontSize: 11.5, color: AppColors.tm),
                       ),
                     ],
                   ),
@@ -185,52 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RoleButton extends StatelessWidget {
-  final UserRole role;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _RoleButton(this.role, {required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.accentBg : AppColors.s1,
-          border: Border.all(
-              color: selected ? AppColors.accent : AppColors.bd, width: 1.5),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(role.icon,
-                size: 20, color: selected ? AppColors.accent : AppColors.ts),
-            const SizedBox(height: 5),
-            Text(role.shortLabel,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.3,
-                    color:
-                        selected ? AppColors.accentText : AppColors.ts)),
-            const SizedBox(height: 2),
-            Text(role.hint,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 10, color: AppColors.tm)),
-          ],
         ),
       ),
     );
