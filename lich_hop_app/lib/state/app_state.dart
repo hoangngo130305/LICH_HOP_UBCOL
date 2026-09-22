@@ -15,6 +15,7 @@ class AppState extends ChangeNotifier {
   String? _authError;
   String? _lastError;
 
+  int? currentUserId;
   int? currentMemberId;
   String _userName = '';
   String? _unit;
@@ -112,6 +113,7 @@ class AppState extends ChangeNotifier {
   Future<void> _loadProfileAndData() async {
     final me = await api.get('me/') as Map<String, dynamic>;
     _role = _roleFromDb(me['role'] as String);
+    currentUserId = me['id'] as int?;
     final memberObj = me['member'] as Map<String, dynamic>?;
     currentMemberId = memberObj?['id'] as int?;
     _myTitle = memberObj?['title'] as String?;
@@ -182,6 +184,7 @@ class AppState extends ChangeNotifier {
     await api.logout();
     _role = null;
     _pageId = '';
+    currentUserId = null;
     currentMemberId = null;
     _userName = '';
     _unit = null;
@@ -588,25 +591,59 @@ class AppState extends ChangeNotifier {
 
   /// Tạo tài khoản mới (phân cấp: SuperAdmin tạo Văn thư phòng ban bất kỳ;
   /// Văn thư phòng ban chỉ tạo được cán bộ trong đúng đơn vị của mình).
-  /// Trả về thông báo lỗi cụ thể nếu thất bại, null nếu thành công.
-  Future<String?> createAccount({
-    required String email,
+  /// [username]/[email] để trống (null) sẽ được backend tự sinh từ họ tên --
+  /// theo yêu cầu 22/09/2026: admin chỉ cần gõ họ tên, không bắt buộc phải tự
+  /// đặt tên đăng nhập hay gõ đúng cú pháp email UBND thật.
+  /// Trả về (username, email) do backend tra ve (co the la gia tri TU SINH
+  /// khac voi gia tri go vao) de hien thi lai cho admin biet dang nhap bang
+  /// gi -- neu khong se khong ai biet ten dang nhap vua duoc tu tao ra.
+  /// Neu that bai, [error] khac null va username/email deu null.
+  Future<({String? username, String? email, String? error})> createAccount({
+    String? email,
     required String password,
     required String role,
     required String displayName,
     required String unit,
     String? memberTitle,
+    String? username,
   }) async {
     try {
-      await api.post('accounts/', body: {
-        'email': email,
+      final res = await api.post('accounts/', body: {
+        'username': username ?? '',
+        'email': email ?? '',
         'password': password,
         'role': role,
         'display_name': displayName,
         'unit': unit,
         'member_name': displayName,
         'member_title': memberTitle ?? '',
-      });
+      }) as Map<String, dynamic>;
+      return (
+        username: res['username'] as String?,
+        email: res['email'] as String?,
+        error: null,
+      );
+    } catch (e) {
+      return (username: null, email: null, error: e.toString());
+    }
+  }
+
+  Future<String?> deleteAccount(int id) async {
+    try {
+      await api.delete('accounts/$id/');
+      _accounts.removeWhere((a) => a['id'] == id);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Admin cấp lại mật khẩu mới cho 1 tài khoản khi cán bộ quên mật khẩu.
+  Future<String?> resetPassword(int id, String newPassword) async {
+    try {
+      await api.post('accounts/$id/reset_password/',
+          body: {'password': newPassword});
       return null;
     } catch (e) {
       return e.toString();

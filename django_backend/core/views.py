@@ -37,12 +37,15 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        email = attrs.get('username') or attrs.get('email')
+        login = attrs.get('username') or attrs.get('email')
         password = attrs.get('password')
         try:
-            user_obj = User.objects.get(email__iexact=email)
+            user_obj = User.objects.get(email__iexact=login)
         except User.DoesNotExist:
-            self.fail('no_active_account')
+            try:
+                user_obj = User.objects.get(username__iexact=login)
+            except User.DoesNotExist:
+                self.fail('no_active_account')
         user = authenticate(username=user_obj.username, password=password)
         if not user:
             self.fail('no_active_account')
@@ -286,7 +289,7 @@ class UserAccountViewSet(viewsets.ModelViewSet):
     lam trang rieng.
     """
     permission_classes = [IsAuthenticated, UserManagementPermission]
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_serializer_class(self):
         return UserCreateSerializer if self.request.method == 'POST' else UserAccountSerializer
@@ -303,3 +306,29 @@ class UserAccountViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(UserAccountSerializer(user).data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.id == request.user.id:
+            return Response(
+                {'detail': 'Không thể tự xóa tài khoản đang đăng nhập.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def reset_password(self, request, pk=None):
+        """Admin cap lai mat khau moi cho 1 tai khoan (khi can bo quen mat
+        khau) -- theo yeu cau 22/09/2026, chi quan_tri duoc goi (kiem tra o
+        UserManagementPermission.has_permission)."""
+        password = (request.data.get('password') or '').strip()
+        if len(password) < 6:
+            return Response(
+                {'detail': 'Mật khẩu mới phải có ít nhất 6 ký tự.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        instance = self.get_object()
+        instance.set_password(password)
+        instance.save(update_fields=['password'])
+        return Response({'detail': 'Đã cấp lại mật khẩu.'})

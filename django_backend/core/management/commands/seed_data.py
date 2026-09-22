@@ -162,8 +162,11 @@ class Command(BaseCommand):
         users = {}
         for prefix, role, display_name, unit, member_name in accounts:
             email = f"{prefix}@{DOMAIN}"
+            # username = prefix ngan (vd. "superadmin"), KHONG trung voi email
+            # -- truoc day username=email khien 2 truong nhin y het nhau, gay
+            # kho hieu khi xem lai "Thong tin dang nhap" (phan hoi 22/09/2026).
             users[prefix] = User.objects.create_user(
-                username=email, email=email, password=PASSWORD,
+                username=prefix, email=email, password=PASSWORD,
                 role=role, unit=unit, display_name=display_name,
                 member=members.get(member_name),
             )
@@ -197,8 +200,11 @@ class Command(BaseCommand):
         def add_personal_account(name, default_role, unit):
             member = members[name]
             role = role_overrides.get(name, default_role)
+            # username = ten ngan khong dau (vd. "dinh.vu.thang"), KHONG kem
+            # @domain -- de phan biet ro voi email (phan hoi 22/09/2026: "ten
+            # dang nhap co khac gi la email dau").
             users[name] = User.objects.create_user(
-                username=member.email, email=member.email, password=PASSWORD,
+                username=slug(name), email=member.email, password=PASSWORD,
                 role=role, unit=unit, display_name=name, member=member,
                 can_manage_rooms=name in ROOM_MANAGERS,
             )

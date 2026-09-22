@@ -581,6 +581,125 @@ Future<void> confirmDeleteMeeting(BuildContext context, Meeting m) async {
   }
 }
 
+Future<void> confirmDeleteAccount(
+    BuildContext context, Map<String, dynamic> account) async {
+  final state = AppScope.read(context);
+  final name = account['display_name'] as String? ?? '';
+  final ok = await showAppDialog<bool>(
+    context,
+    title: 'Xóa tài khoản',
+    width: 420,
+    body: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Notice(
+          'Bạn có chắc muốn xóa tài khoản "$name"? '
+          'Hành động không thể hoàn tác.',
+          type: NoticeType.warn,
+        ),
+      ],
+    ),
+    actions: [
+      GhostButton('Hủy', onPressed: () => Navigator.of(context).pop(false)),
+      PrimaryButton('Xóa',
+          icon: Icons.delete_outline,
+          color: AppColors.danger,
+          onPressed: () => Navigator.of(context).pop(true)),
+    ],
+  );
+  if (ok == true && context.mounted) {
+    final error = await state.deleteAccount(account['id'] as int);
+    if (!context.mounted) return;
+    showToast(
+      context,
+      error == null ? 'Đã xóa tài khoản "$name"' : 'Xóa thất bại: $error',
+      type: error == null ? NoticeType.ok : NoticeType.warn,
+    );
+  }
+}
+
+/// Admin cấp lại mật khẩu mới cho 1 tài khoản (khi cán bộ quên mật khẩu).
+Future<void> confirmResetPassword(
+    BuildContext context, Map<String, dynamic> account) async {
+  final state = AppScope.read(context);
+  final name = account['display_name'] as String? ?? '';
+  final username = account['username'] as String? ?? '';
+  final passCtrl = TextEditingController(text: 'admin@123');
+
+  final ok = await showAppDialog<bool>(
+    context,
+    title: 'Cấp lại mật khẩu',
+    width: 420,
+    body: StatefulBuilder(builder: (context, setLocal) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Notice('Đặt mật khẩu mới cho tài khoản "$name" ($username).'),
+          const SizedBox(height: 10),
+          FormField2(
+            'Mật khẩu mới',
+            TextField(
+                controller: passCtrl,
+                decoration: const InputDecoration(
+                    hintText: 'Tối thiểu 6 ký tự')),
+            required: true,
+          ),
+        ],
+      );
+    }),
+    actions: [
+      GhostButton('Hủy', onPressed: () => Navigator.of(context).pop(false)),
+      PrimaryButton('Cấp lại mật khẩu',
+          icon: Icons.lock_reset,
+          onPressed: () => Navigator.of(context).pop(true)),
+    ],
+  );
+
+  if (ok == true && context.mounted) {
+    final newPassword = passCtrl.text.trim();
+    if (newPassword.length < 6) {
+      showToast(context, 'Mật khẩu mới phải có ít nhất 6 ký tự',
+          type: NoticeType.warn);
+    } else {
+      final error = await state.resetPassword(
+          account['id'] as int, newPassword);
+      if (context.mounted) {
+        if (error != null) {
+          showToast(context, 'Cấp lại mật khẩu thất bại: $error',
+              type: NoticeType.warn);
+        } else {
+          await showAppDialog<void>(
+            context,
+            title: 'Đã cấp lại mật khẩu',
+            width: 400,
+            body: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Notice(
+                  'Ghi lại mật khẩu mới bên dưới để cung cấp cho cán bộ.',
+                  type: NoticeType.ok,
+                ),
+                const SizedBox(height: 12),
+                CredentialLine('Tên đăng nhập', username),
+                CredentialLine('Mật khẩu mới', newPassword),
+              ],
+            ),
+            actions: [
+              PrimaryButton('Đã ghi lại',
+                  onPressed: () => Navigator.of(context).pop()),
+            ],
+          );
+        }
+      }
+    }
+  }
+
+  passCtrl.dispose();
+}
+
 /// Đổi phòng họp cho một cuộc họp đang trùng lịch.
 Future<void> showRoomChangeDialog(BuildContext context, Meeting m) async {
   final state = AppScope.read(context);
@@ -660,14 +779,23 @@ Future<void> showCreateAccountDialog(
   BuildContext context, {
   String? fixedUnit,
   List<String> unitOptions = const [],
+  List<Map<String, String>> roleOptions = const [],
 }) async {
   final state = AppScope.read(context);
   final nameCtrl = TextEditingController();
+  final titleCtrl = TextEditingController();
+  final usernameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   final isSuperAdmin = fixedUnit == null;
   String role = isSuperAdmin ? 'phong_ban' : 'thanh_vien';
   String? unit = fixedUnit ?? (unitOptions.isEmpty ? null : unitOptions.first);
+  final roles = roleOptions.isEmpty
+      ? const [
+          {'value': 'phong_ban', 'label': 'Văn thư Văn phòng / Phòng ban'},
+          {'value': 'thanh_vien', 'label': 'Cán bộ, công chức'},
+        ]
+      : roleOptions;
 
   final ok = await showAppDialog<bool>(
     context,
@@ -687,11 +815,11 @@ Future<void> showCreateAccountDialog(
             required: true,
           ),
           FormField2(
-            'Email đăng nhập',
+            'Chức vụ',
             TextField(
-                controller: emailCtrl,
+                controller: titleCtrl,
                 decoration: const InputDecoration(
-                    hintText: 'ten.can.bo@caungolanh.gov.vn')),
+                    hintText: 'VD: Phó Chủ tịch UBND phường')),
             required: true,
           ),
           FormField2(
@@ -713,13 +841,38 @@ Future<void> showCreateAccountDialog(
               ),
               required: true,
             ),
-            const Notice(
-              'Tài khoản mới sẽ là Văn thư của đơn vị này — tự tạo được '
-              'tài khoản cán bộ trong đơn vị mình.',
+            FormField2(
+              'Quyền tài khoản',
+              AppDropdown<String>(
+                value: role,
+                items: roles.map((item) => item['value']!).toList(),
+                labelOf: (value) => roles
+                  .firstWhere((item) => item['value'] == value)['label']!,
+                onChanged: (value) => setLocal(() => role = value ?? role),
+              ),
+              required: true,
             ),
           ] else
             Notice('Tài khoản mới sẽ thuộc đơn vị "$fixedUnit", vai trò cán bộ (chỉ xem).',
                 icon: Icons.info_outline),
+          FormField2(
+            'Tên đăng nhập (tùy chọn)',
+            TextField(
+                controller: usernameCtrl,
+                decoration: const InputDecoration(
+                    hintText: 'Để trống sẽ tự tạo từ họ tên')),
+          ),
+          FormField2(
+            'Email UBND (tùy chọn)',
+            TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(
+                    hintText: 'Để trống nếu chưa có email UBND đúng chuẩn')),
+          ),
+          const Notice(
+            'Có thể đăng nhập bằng tên đăng nhập hoặc email — không bắt buộc '
+            'nhập đúng cú pháp email UBND, hệ thống tự tạo nếu để trống.',
+          ),
         ],
       );
     }),
@@ -733,30 +886,61 @@ Future<void> showCreateAccountDialog(
 
   if (ok == true && context.mounted) {
     final name = nameCtrl.text.trim();
+    final title = titleCtrl.text.trim();
+    final username = usernameCtrl.text.trim();
     final email = emailCtrl.text.trim();
     final pass = passCtrl.text.trim();
-    if (name.isEmpty || email.isEmpty || pass.length < 6) {
-      showToast(context, 'Vui lòng nhập đủ họ tên, email và mật khẩu (≥ 6 ký tự)',
+    if (name.isEmpty || title.isEmpty || pass.length < 6) {
+      showToast(context, 'Vui lòng nhập đủ họ tên, chức vụ và mật khẩu (≥ 6 ký tự)',
           type: NoticeType.warn);
     } else {
-      final error = await state.createAccount(
-        email: email,
+      final result = await state.createAccount(
+        username: username.isEmpty ? null : username,
+        email: email.isEmpty ? null : email,
         password: pass,
         role: role,
         displayName: name,
         unit: unit ?? '',
+        memberTitle: title,
       );
-      if (context.mounted) {
-        showToast(
+      if (!context.mounted) return;
+      if (result.error != null) {
+        showToast(context, 'Tạo tài khoản thất bại: ${result.error}',
+            type: NoticeType.warn);
+      } else {
+        // Hien lai bang dialog (khong dung toast) vi username/email co the
+        // la gia tri BACKEND TU SINH -- toast bien mat qua nhanh, admin
+        // khong kip ghi lai de cap cho can bo dang nhap.
+        await showAppDialog<void>(
           context,
-          error == null ? 'Đã tạo tài khoản cho $name' : 'Tạo tài khoản thất bại: $error',
-          type: error == null ? NoticeType.ok : NoticeType.warn,
+          title: 'Đã tạo tài khoản cho $name',
+          width: 420,
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Notice(
+                'Ghi lại thông tin đăng nhập bên dưới để cung cấp cho cán bộ.',
+                type: NoticeType.ok,
+              ),
+              const SizedBox(height: 12),
+              CredentialLine('Tên đăng nhập', result.username ?? '—'),
+              CredentialLine('Email', result.email ?? '—'),
+              CredentialLine('Mật khẩu', pass),
+            ],
+          ),
+          actions: [
+            PrimaryButton('Đã ghi lại',
+                onPressed: () => Navigator.of(context).pop()),
+          ],
         );
       }
     }
   }
 
   nameCtrl.dispose();
+  titleCtrl.dispose();
+  usernameCtrl.dispose();
   emailCtrl.dispose();
   passCtrl.dispose();
 }
@@ -898,4 +1082,35 @@ Future<void> showEditMemberDialog(BuildContext context, Member member) async {
   unitCtrl.dispose();
   phoneCtrl.dispose();
   emailCtrl.dispose();
+}
+
+/// 1 dòng "nhãn: giá trị" cho phép bôi đen/copy — dùng trong dialog hiện lại
+/// thông tin đăng nhập vừa tạo (username/email có thể do backend tự sinh).
+class CredentialLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const CredentialLine(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label,
+                style: const TextStyle(fontSize: 12, color: AppColors.tm)),
+          ),
+          Expanded(
+            child: SelectableText(value,
+                style: const TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
 }

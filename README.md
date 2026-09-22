@@ -4,7 +4,7 @@ Hệ thống quản lý lịch họp UBND Phường Cầu Ông Lãnh.
 
 ## Cấu trúc dự án
 
-- `django_backend/` — Backend Django + DRF (MySQL/MariaDB), chạy cổng **8005**.
+- `django_backend/` — Backend Django + DRF (MySQL/MariaDB), chạy cổng **8000**.
 - `WEBSITE/` — Bản build web (Flutter web) để phục vụ tĩnh, chạy cổng **8085**.
 - `lich_hop_app/` — Mã nguồn ứng dụng Flutter (mobile + web).
 - `lichhop_django.sql` — Bản dump database (phpMyAdmin/MariaDB) để import.
@@ -12,7 +12,7 @@ Hệ thống quản lý lịch họp UBND Phường Cầu Ông Lãnh.
 
 ## Triển khai (tóm tắt)
 
-### Backend (port 8005)
+### Backend (port 8000)
 
 ```bash
 cd django_backend
@@ -22,7 +22,7 @@ pip install -r requirements.txt
 # import database:
 mysql -u <user> -p lichhop_django < ../lichhop_django.sql
 # cấu hình biến môi trường DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DJANGO_SECRET_KEY, DJANGO_DEBUG
-python manage.py runserver 0.0.0.0:8005
+python manage.py runserver 0.0.0.0:8000
 ```
 
 ### Frontend (port 8085)

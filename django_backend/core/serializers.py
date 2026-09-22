@@ -1,3 +1,5 @@
+import unicodedata
+
 from rest_framework import serializers
 from .models import (
     Member, Room, Meeting, MeetingAttendee, MeetingFile, CheckinRecord, User,
@@ -11,6 +13,26 @@ _EXT_TO_KIND = {
     'png': FileKind.IMG, 'jpg': FileKind.IMG, 'jpeg': FileKind.IMG,
 }
 
+DEFAULT_ACCOUNT_DOMAIN = 'caungolanh.gov.vn'
+
+
+def _slugify_username(name: str) -> str:
+    # 'Đ'/'đ' khong tach duoc dau qua NFKD (day la ky tu rieng trong bang
+    # Latin Extended-A), phai thay tay truoc de khong bi mat chu dau tien.
+    name = (name or '').replace('Đ', 'D').replace('đ', 'd')
+    n = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+    slug = n.lower().replace(' ', '.').strip('.')
+    return slug or 'user'
+
+
+def _unique_username(base: str) -> str:
+    username = base
+    i = 1
+    while User.objects.filter(username__iexact=username).exists():
+        i += 1
+        username = f"{base}{i}"
+    return username
+
 
 class MemberSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,7 +45,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'role', 'display_name', 'unit', 'member', 'can_manage_rooms']
+        fields = ['id', 'username', 'email', 'role', 'display_name', 'unit', 'member', 'can_manage_rooms']
 
 
 class UserAccountSerializer(serializers.ModelSerializer):
@@ -32,19 +54,27 @@ class UserAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'role', 'display_name', 'unit', 'member', 'is_active', 'can_manage_rooms']
+        fields = ['id', 'username', 'email', 'role', 'display_name', 'unit', 'member', 'is_active', 'can_manage_rooms']
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """Tao tai khoan moi. Pham vi (vai tro nao duoc tao vai tro nao, don vi nao)
-    duoc kiem tra o view, khong o day."""
+    duoc kiem tra o view, khong o day.
+
+    username/email deu la TUY CHON (yeu cau 22/09/2026, phan hoi cua anh
+    Khoa): admin chi can go ho ten, khong bat buoc tu dat ten dang nhap hay
+    go dung cu phap email UBND that (vd. thnamlong.colanh@tphcm.gov.vn) --
+    de trong thi he thong tu sinh tu ho ten, van dang nhap duoc bang ca
+    username lan email nhu binh thuong."""
+    username = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, min_length=6)
     member_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
     member_title = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'password', 'role', 'display_name', 'unit',
+        fields = ['id', 'username', 'email', 'password', 'role', 'display_name', 'unit',
                   'member_name', 'member_title', 'can_manage_rooms']
         extra_kwargs = {'can_manage_rooms': {'required': False}}
 
@@ -54,18 +84,27 @@ class UserCreateSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         unit = validated_data.get('unit')
 
+        username = (validated_data.pop('username', '') or '').strip()
+        if not username:
+            username = _unique_username(_slugify_username(validated_data['display_name']))
+
+        email = (validated_data.get('email') or '').strip()
+        if not email:
+            email = f"{username}@{DEFAULT_ACCOUNT_DOMAIN}"
+        validated_data['email'] = email
+
         member = None
         if member_name:
             initials = ''.join(p[0].upper() for p in member_name.split()[-2:] if p)
             member = Member.objects.create(
                 name=member_name, title=member_title or validated_data['role'],
                 unit=unit or '', initials=initials or 'NV',
-                email=validated_data['email'],
+                email=email,
             )
 
         user = User.objects.create_user(
-            username=validated_data['email'],
-            email=validated_data['email'],
+            username=username,
+            email=email,
             password=password,
             role=validated_data['role'],
             display_name=validated_data['display_name'],

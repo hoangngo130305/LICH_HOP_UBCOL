@@ -150,7 +150,12 @@ class ShellScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final role = state.role!;
+    final role = state.role;
+    if (role == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final wide = MediaQuery.of(context).size.width >= 900;
 
     final content = Container(

@@ -44,15 +44,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    final email = _emailCtrl.text.trim();
+    final loginValue = _emailCtrl.text.trim();
     final password = _passCtrl.text;
-    if (email.isEmpty || password.isEmpty) {
-      showToast(context, 'Vui lòng nhập email và mật khẩu',
+    if (loginValue.isEmpty || password.isEmpty) {
+      showToast(context, 'Vui lòng nhập tên đăng nhập/email và mật khẩu',
           type: NoticeType.warn);
       return;
     }
     setState(() => _submitting = true);
-    final ok = await AppScope.read(context).login(email, password);
+    final ok = await AppScope.read(context).login(loginValue, password);
     if (!mounted) return;
     setState(() => _submitting = false);
     if (!ok) {
@@ -145,10 +145,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 18),
                       TextField(
                         controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
+                        keyboardType: TextInputType.text,
                         decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.mail_outline, size: 18),
+                          labelText: 'Tên đăng nhập hoặc email',
+                          prefixIcon: Icon(Icons.person_outline, size: 18),
                         ),
                       ),
                       const SizedBox(height: 10),

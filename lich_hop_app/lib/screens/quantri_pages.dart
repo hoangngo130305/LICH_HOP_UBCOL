@@ -297,7 +297,14 @@ class _QtMembersPageState extends State<QtMembersPage> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final units = state.members.map((m) => m.unit).toSet().toList()..sort();
+    // "Khác" là đơn vị dùng cho khách mời nhập tay (không phải cán bộ cơ hữu),
+    // không phải lựa chọn hợp lệ khi tạo tài khoản đăng nhập thật.
+    final units = state.members
+        .map((m) => m.unit)
+        .where((u) => u != 'Khác')
+        .toSet()
+        .toList()
+      ..sort();
     final accounts = state.accounts;
     final members = List.of(state.members)
       ..sort((a, b) => a.unit == b.unit
@@ -324,9 +331,17 @@ class _QtMembersPageState extends State<QtMembersPage> {
           'Tài khoản đăng nhập và danh bạ toàn bộ cán bộ, công chức',
           action: PrimaryButton('Thêm tài khoản',
               icon: Icons.person_add_alt,
-              onPressed: () =>
-                  showCreateAccountDialog(context, unitOptions: units)
-                      .then((_) => state.loadAccounts())),
+              onPressed: () => showCreateAccountDialog(
+                context,
+                unitOptions: units,
+                // SuperAdmin duoc tao tai khoan bat ky vai tro nao (backend
+                // UserManagementPermission khong gioi han quan_tri) -- truoc
+                // day dialog mac dinh chi cho chon 2/5 vai tro.
+                roleOptions: [
+                  for (final role in UserRole.values)
+                    {'value': role.dbValue, 'label': role.label},
+                ],
+              ).then((_) => state.loadAccounts())),
         ),
         AppTabs(
           [
@@ -350,7 +365,10 @@ class _QtMembersPageState extends State<QtMembersPage> {
                 children: [
                   for (var i = 0; i < shownAccounts.length; i++)
                     _AccountRow(shownAccounts[i],
-                        divider: i != shownAccounts.length - 1),
+                        divider: i != shownAccounts.length - 1,
+                        canDelete: shownAccounts[i]['id'] != state.currentUserId,
+                        onDelete: () => confirmDeleteAccount(
+                            context, shownAccounts[i])),
                   Paginator(
                     page: accountPage,
                     pageCount: accountPageCount,
@@ -391,11 +409,16 @@ class _QtMembersPageState extends State<QtMembersPage> {
 class _AccountRow extends StatelessWidget {
   final Map<String, dynamic> account;
   final bool divider;
+  final bool canDelete;
+  final VoidCallback? onDelete;
 
-  const _AccountRow(this.account, {this.divider = true});
+  const _AccountRow(this.account,
+      {this.divider = true, this.canDelete = false, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
+    final member = account['member'] as Map<String, dynamic>?;
+    final title = (member?['title'] as String?)?.trim();
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: divider
@@ -423,16 +446,55 @@ class _AccountRow extends StatelessWidget {
                 Text(account['display_name'] as String? ?? '',
                     style: const TextStyle(
                         fontSize: 12.5, fontWeight: FontWeight.w500)),
-                Text(
-                    '${account['email']} · ${account['unit'] ?? '—'}',
+                Text(title == null || title.isEmpty ? '—' : title,
                     style: AppTheme.meta),
               ],
             ),
           ),
           AppBadge(_roleLabel(account['role'] as String? ?? ''),
               bg: AppColors.s0, fg: AppColors.ts),
+          IconButton(
+            icon: const Icon(Icons.login, size: 18, color: AppColors.tm),
+            tooltip: 'Xem thông tin đăng nhập',
+            onPressed: () => _showLoginInfo(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.lock_reset, size: 18, color: AppColors.tm),
+            tooltip: 'Cấp lại mật khẩu',
+            onPressed: () => confirmResetPassword(context, account),
+          ),
+          if (canDelete && onDelete != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline,
+                  size: 18, color: AppColors.danger),
+              tooltip: 'Xóa tài khoản',
+              onPressed: onDelete,
+            ),
         ],
       ),
+    );
+  }
+
+  void _showLoginInfo(BuildContext context) {
+    showAppDialog<void>(
+      context,
+      title: 'Thông tin đăng nhập',
+      width: 400,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CredentialLine('Họ tên', account['display_name'] as String? ?? '—'),
+          CredentialLine(
+              'Tên đăng nhập', account['username'] as String? ?? '—'),
+          CredentialLine('Email', account['email'] as String? ?? '—'),
+          const CredentialLine('Mật khẩu',
+              '(không hiển thị lại được — bấm nút "Cấp lại mật khẩu" nếu quên)'),
+        ],
+      ),
+      actions: [
+        GhostButton('Đóng', onPressed: () => Navigator.of(context).pop()),
+      ],
     );
   }
 

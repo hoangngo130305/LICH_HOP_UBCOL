@@ -613,6 +613,7 @@ class AppDropdown<T> extends StatelessWidget {
           value: value,
           isExpanded: true,
           isDense: true,
+          itemHeight: kMinInteractiveDimension,
           hint: hint == null
               ? null
               : Text(hint!,

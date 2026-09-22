@@ -115,6 +115,11 @@ class UserManagementPermission(BasePermission):
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return role(request) in ('quan_tri', 'phong_ban')
+        # Cap lai mat khau: chi quan_tri, kiem tra rieng truoc nhanh POST
+        # chung o duoi (payload reset_password khong co role/unit nen se bi
+        # tu choi nham neu di qua nhanh do).
+        if getattr(view, 'action', None) == 'reset_password':
+            return role(request) == 'quan_tri'
         if request.method == 'POST':
             if role(request) == 'quan_tri':
                 return True
@@ -122,6 +127,8 @@ class UserManagementPermission(BasePermission):
                 data = request.data
                 return data.get('role') == 'thanh_vien' and data.get('unit') == unit(request)
             return False
+        if request.method == 'DELETE':
+            return role(request) == 'quan_tri'
         return role(request) == 'quan_tri'
 
 

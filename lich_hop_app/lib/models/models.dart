@@ -6,6 +6,16 @@ import 'package:flutter/material.dart';
 enum UserRole { lanhDao, vanThu, quanTri, phongBan, thanhVien }
 
 extension UserRoleX on UserRole {
+  /// Gia tri vai tro phia backend (Django Role.choices) -- dung khi goi API
+  /// (vd. tao tai khoan), khac voi ten enum Dart.
+  String get dbValue => switch (this) {
+        UserRole.lanhDao => 'lanh_dao',
+        UserRole.vanThu => 'van_thu',
+        UserRole.quanTri => 'quan_tri',
+        UserRole.phongBan => 'phong_ban',
+        UserRole.thanhVien => 'thanh_vien',
+      };
+
   String get userName => switch (this) {
         UserRole.lanhDao => 'Đ/c Nguyễn Văn Nghĩa',
         UserRole.vanThu => 'Nguyễn Thị Lan',
