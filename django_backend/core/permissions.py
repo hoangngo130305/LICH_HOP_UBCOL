@@ -115,10 +115,10 @@ class UserManagementPermission(BasePermission):
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
             return role(request) in ('quan_tri', 'phong_ban')
-        # Cap lai mat khau: chi quan_tri, kiem tra rieng truoc nhanh POST
-        # chung o duoi (payload reset_password khong co role/unit nen se bi
-        # tu choi nham neu di qua nhanh do).
-        if getattr(view, 'action', None) == 'reset_password':
+        # Dat lai mat khau / sua thong tin tai khoan: chi quan_tri, kiem tra
+        # rieng truoc nhanh POST chung o duoi (payload cac action nay khong
+        # co role/unit nen se bi tu choi nham neu di qua nhanh do).
+        if getattr(view, 'action', None) in ('reset_password', 'update_info'):
             return role(request) == 'quan_tri'
         if request.method == 'POST':
             if role(request) == 'quan_tri':

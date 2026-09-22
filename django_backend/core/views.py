@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 from django.utils import timezone
 from rest_framework import viewsets, generics, status
 from rest_framework.decorators import action
@@ -24,6 +26,8 @@ from .serializers import (
     UserAccountSerializer, UserCreateSerializer, NotificationSerializer,
     ConflictAcknowledgementSerializer,
 )
+
+DEFAULT_RESET_PASSWORD = "admin@123"
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -319,16 +323,46 @@ class UserAccountViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
-        """Admin cap lai mat khau moi cho 1 tai khoan (khi can bo quen mat
+        """Dat lai mat khau cua 1 tai khoan VE MAC DINH (khi can bo quen mat
         khau) -- theo yeu cau 22/09/2026, chi quan_tri duoc goi (kiem tra o
-        UserManagementPermission.has_permission)."""
-        password = (request.data.get('password') or '').strip()
-        if len(password) < 6:
+        UserManagementPermission.has_permission). Khong nhan mat khau tuy y
+        tu client de tranh mot client bi loi/gia mao dat mat khau bat ky."""
+        instance = self.get_object()
+        instance.set_password(DEFAULT_RESET_PASSWORD)
+        instance.save(update_fields=['password'])
+        return Response({'detail': 'Đã đặt lại mật khẩu về mặc định.',
+                          'password': DEFAULT_RESET_PASSWORD})
+
+    @action(detail=True, methods=['post'])
+    def update_info(self, request, pk=None):
+        """Admin sua Ho ten / Ten dang nhap / Email cua 1 tai khoan da co
+        (yeu cau 22/09/2026) -- chi quan_tri duoc goi. Dong bo lai ten/email
+        sang Member lien ket (neu co) de danh ba khong bi lech voi tai
+        khoan dang nhap."""
+        instance = self.get_object()
+        display_name = (request.data.get('display_name') or '').strip()
+        username = (request.data.get('username') or '').strip()
+        email = (request.data.get('email') or '').strip()
+        if not display_name or not username or not email:
             return Response(
-                {'detail': 'Mật khẩu mới phải có ít nhất 6 ký tự.'},
+                {'detail': 'Vui lòng nhập đủ họ tên, tên đăng nhập và email.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        instance = self.get_object()
-        instance.set_password(password)
-        instance.save(update_fields=['password'])
-        return Response({'detail': 'Đã cấp lại mật khẩu.'})
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            return Response({'detail': 'Email không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.exclude(id=instance.id).filter(username__iexact=username).exists():
+            return Response({'detail': 'Tên đăng nhập đã được sử dụng.'}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.exclude(id=instance.id).filter(email__iexact=email).exists():
+            return Response({'detail': 'Email đã được sử dụng.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.display_name = display_name
+        instance.username = username
+        instance.email = email
+        instance.save(update_fields=['display_name', 'username', 'email'])
+        if instance.member_id:
+            instance.member.name = display_name
+            instance.member.email = email
+            instance.member.save(update_fields=['name', 'email'])
+        return Response(UserAccountSerializer(instance).data)

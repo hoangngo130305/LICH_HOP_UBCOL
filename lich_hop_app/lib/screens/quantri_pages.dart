@@ -459,8 +459,13 @@ class _AccountRow extends StatelessWidget {
             onPressed: () => _showLoginInfo(context),
           ),
           IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.tm),
+            tooltip: 'Sửa thông tin tài khoản',
+            onPressed: () => showEditAccountDialog(context, account),
+          ),
+          IconButton(
             icon: const Icon(Icons.lock_reset, size: 18, color: AppColors.tm),
-            tooltip: 'Cấp lại mật khẩu',
+            tooltip: 'Đặt lại mật khẩu mặc định',
             onPressed: () => confirmResetPassword(context, account),
           ),
           if (canDelete && onDelete != null)

@@ -619,85 +619,137 @@ Future<void> confirmDeleteAccount(
   }
 }
 
-/// Admin cấp lại mật khẩu mới cho 1 tài khoản (khi cán bộ quên mật khẩu).
+/// Đặt lại mật khẩu của 1 tài khoản VỀ MẶC ĐỊNH (admin@123) khi cán bộ quên
+/// mật khẩu — yêu cầu 22/09/2026: không còn cho admin tự đặt mật khẩu tùy ý,
+/// chỉ còn 1 thao tác xác nhận "đặt về mặc định" cho gọn và nhất quán.
 Future<void> confirmResetPassword(
     BuildContext context, Map<String, dynamic> account) async {
   final state = AppScope.read(context);
   final name = account['display_name'] as String? ?? '';
   final username = account['username'] as String? ?? '';
-  final passCtrl = TextEditingController(text: 'admin@123');
 
   final ok = await showAppDialog<bool>(
     context,
-    title: 'Cấp lại mật khẩu',
+    title: 'Đặt lại mật khẩu mặc định',
     width: 420,
-    body: StatefulBuilder(builder: (context, setLocal) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Notice('Đặt mật khẩu mới cho tài khoản "$name" ($username).'),
-          const SizedBox(height: 10),
-          FormField2(
-            'Mật khẩu mới',
-            TextField(
-                controller: passCtrl,
-                decoration: const InputDecoration(
-                    hintText: 'Tối thiểu 6 ký tự')),
-            required: true,
-          ),
-        ],
-      );
-    }),
+    body: Notice(
+      'Đặt lại mật khẩu của tài khoản "$name" ($username) về mặc định '
+      '"${AppState.defaultPassword}"?',
+      type: NoticeType.warn,
+    ),
     actions: [
       GhostButton('Hủy', onPressed: () => Navigator.of(context).pop(false)),
-      PrimaryButton('Cấp lại mật khẩu',
+      PrimaryButton('Đặt lại mật khẩu',
           icon: Icons.lock_reset,
           onPressed: () => Navigator.of(context).pop(true)),
     ],
   );
 
   if (ok == true && context.mounted) {
-    final newPassword = passCtrl.text.trim();
-    if (newPassword.length < 6) {
-      showToast(context, 'Mật khẩu mới phải có ít nhất 6 ký tự',
+    final error = await state.resetPassword(account['id'] as int);
+    if (!context.mounted) return;
+    if (error != null) {
+      showToast(context, 'Đặt lại mật khẩu thất bại: $error',
           type: NoticeType.warn);
     } else {
-      final error = await state.resetPassword(
-          account['id'] as int, newPassword);
-      if (context.mounted) {
-        if (error != null) {
-          showToast(context, 'Cấp lại mật khẩu thất bại: $error',
-              type: NoticeType.warn);
-        } else {
-          await showAppDialog<void>(
-            context,
-            title: 'Đã cấp lại mật khẩu',
-            width: 400,
-            body: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Notice(
-                  'Ghi lại mật khẩu mới bên dưới để cung cấp cho cán bộ.',
-                  type: NoticeType.ok,
-                ),
-                const SizedBox(height: 12),
-                CredentialLine('Tên đăng nhập', username),
-                CredentialLine('Mật khẩu mới', newPassword),
-              ],
+      await showAppDialog<void>(
+        context,
+        title: 'Đã đặt lại mật khẩu',
+        width: 400,
+        body: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Notice(
+              'Ghi lại thông tin bên dưới để cung cấp cho cán bộ.',
+              type: NoticeType.ok,
             ),
-            actions: [
-              PrimaryButton('Đã ghi lại',
-                  onPressed: () => Navigator.of(context).pop()),
-            ],
-          );
-        }
+            const SizedBox(height: 12),
+            CredentialLine('Tên đăng nhập', username),
+            CredentialLine('Mật khẩu mới', AppState.defaultPassword),
+          ],
+        ),
+        actions: [
+          PrimaryButton('Đã ghi lại',
+              onPressed: () => Navigator.of(context).pop()),
+        ],
+      );
+    }
+  }
+}
+
+/// Sửa Họ tên / Tên đăng nhập / Email của 1 tài khoản đã có (yêu cầu
+/// 22/09/2026) — chỉ Admin gọi được (kiểm tra ở UserManagementPermission).
+Future<void> showEditAccountDialog(
+    BuildContext context, Map<String, dynamic> account) async {
+  final state = AppScope.read(context);
+  final nameCtrl =
+      TextEditingController(text: account['display_name'] as String? ?? '');
+  final usernameCtrl =
+      TextEditingController(text: account['username'] as String? ?? '');
+  final emailCtrl =
+      TextEditingController(text: account['email'] as String? ?? '');
+
+  final ok = await showAppDialog<bool>(
+    context,
+    title: 'Sửa thông tin tài khoản',
+    width: 420,
+    body: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FormField2(
+          'Họ tên',
+          TextField(controller: nameCtrl),
+          required: true,
+        ),
+        FormField2(
+          'Tên đăng nhập',
+          TextField(controller: usernameCtrl),
+          required: true,
+        ),
+        FormField2(
+          'Email',
+          TextField(controller: emailCtrl),
+          required: true,
+        ),
+      ],
+    ),
+    actions: [
+      GhostButton('Hủy', onPressed: () => Navigator.of(context).pop(false)),
+      PrimaryButton('Lưu thay đổi',
+          icon: Icons.save_outlined,
+          onPressed: () => Navigator.of(context).pop(true)),
+    ],
+  );
+
+  if (ok == true && context.mounted) {
+    final name = nameCtrl.text.trim();
+    final username = usernameCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    if (name.isEmpty || username.isEmpty || email.isEmpty) {
+      showToast(context, 'Vui lòng nhập đủ họ tên, tên đăng nhập và email',
+          type: NoticeType.warn);
+    } else {
+      final error = await state.updateAccountInfo(
+        account['id'] as int,
+        displayName: name,
+        username: username,
+        email: email,
+      );
+      if (context.mounted) {
+        showToast(
+          context,
+          error == null ? 'Đã cập nhật tài khoản' : 'Cập nhật thất bại: $error',
+          type: error == null ? NoticeType.ok : NoticeType.warn,
+        );
       }
     }
   }
 
-  passCtrl.dispose();
+  nameCtrl.dispose();
+  usernameCtrl.dispose();
+  emailCtrl.dispose();
 }
 
 /// Đổi phòng họp cho một cuộc họp đang trùng lịch.

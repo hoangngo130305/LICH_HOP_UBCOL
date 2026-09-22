@@ -639,11 +639,38 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Admin cấp lại mật khẩu mới cho 1 tài khoản khi cán bộ quên mật khẩu.
-  Future<String?> resetPassword(int id, String newPassword) async {
+  /// Đặt lại mật khẩu của 1 tài khoản VỀ MẶC ĐỊNH (admin@123) khi cán bộ
+  /// quên mật khẩu -- yêu cầu 22/09/2026: không còn cho đặt mật khẩu tùy ý,
+  /// backend cũng bỏ qua mọi mật khẩu client gửi lên, luôn đặt về mặc định.
+  static const String defaultPassword = 'admin@123';
+
+  Future<String?> resetPassword(int id) async {
     try {
-      await api.post('accounts/$id/reset_password/',
-          body: {'password': newPassword});
+      await api.post('accounts/$id/reset_password/');
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Sửa Họ tên / Tên đăng nhập / Email của 1 tài khoản đã có (yêu cầu
+  /// 22/09/2026). Cập nhật lại luôn dòng tương ứng trong [_accounts] để
+  /// giao diện phản ánh ngay, không cần tải lại cả danh sách.
+  Future<String?> updateAccountInfo(
+    int id, {
+    required String displayName,
+    required String username,
+    required String email,
+  }) async {
+    try {
+      final res = await api.post('accounts/$id/update_info/', body: {
+        'display_name': displayName,
+        'username': username,
+        'email': email,
+      }) as Map<String, dynamic>;
+      final idx = _accounts.indexWhere((a) => a['id'] == id);
+      if (idx != -1) _accounts[idx] = res;
+      notifyListeners();
       return null;
     } catch (e) {
       return e.toString();

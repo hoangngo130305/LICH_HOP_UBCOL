@@ -101,7 +101,7 @@ class AccountAuthTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertTrue(User.objects.filter(id=target.id).exists())
 
-    def test_admin_can_reset_password(self):
+    def test_admin_can_reset_password_to_default(self):
         admin = User.objects.create_user(
             username='admin_reset', email='admin_reset@example.com',
             password='StrongPass123', role='quan_tri', display_name='Admin',
@@ -114,6 +114,9 @@ class AccountAuthTests(TestCase):
         )
         self.client.force_authenticate(user=admin)
 
+        # Gui kem 1 mat khau tuy y de xac nhan backend BO QUA no, luon dat
+        # ve mac dinh admin@123 (yeu cau 22/09/2026: doi tinh nang thanh
+        # "reset ve mac dinh" thay vi "cap mat khau tuy y").
         response = self.client.post(
             f'/api/accounts/{target.id}/reset_password/',
             {'password': 'NewPass456'},
@@ -121,7 +124,8 @@ class AccountAuthTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         target.refresh_from_db()
-        self.assertTrue(target.check_password('NewPass456'))
+        self.assertTrue(target.check_password('admin@123'))
+        self.assertFalse(target.check_password('NewPass456'))
 
     def test_non_admin_cannot_reset_password(self):
         clerk = User.objects.create_user(
@@ -136,11 +140,93 @@ class AccountAuthTests(TestCase):
         )
         self.client.force_authenticate(user=clerk)
 
-        response = self.client.post(
-            f'/api/accounts/{target.id}/reset_password/',
-            {'password': 'NewPass456'},
-        )
+        response = self.client.post(f'/api/accounts/{target.id}/reset_password/')
 
         self.assertEqual(response.status_code, 403)
         target.refresh_from_db()
         self.assertTrue(target.check_password('OldPass123'))
+
+    def test_admin_can_update_account_info(self):
+        admin = User.objects.create_user(
+            username='admin_edit', email='admin_edit@example.com',
+            password='StrongPass123', role='quan_tri', display_name='Admin',
+            unit='Văn phòng HĐND-UBND',
+        )
+        target = User.objects.create_user(
+            username='target_edit', email='target_edit@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Target Old',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.post(
+            f'/api/accounts/{target.id}/update_info/',
+            {
+                'display_name': 'Target New',
+                'username': 'target_new_username',
+                'email': 'target.new@example.com',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        target.refresh_from_db()
+        self.assertEqual(target.display_name, 'Target New')
+        self.assertEqual(target.username, 'target_new_username')
+        self.assertEqual(target.email, 'target.new@example.com')
+
+    def test_update_account_info_rejects_duplicate_username(self):
+        admin = User.objects.create_user(
+            username='admin_edit2', email='admin_edit2@example.com',
+            password='StrongPass123', role='quan_tri', display_name='Admin',
+            unit='Văn phòng HĐND-UBND',
+        )
+        User.objects.create_user(
+            username='taken_username', email='taken@example.com',
+            password='StrongPass123', role='thanh_vien', display_name='Taken',
+            unit='Văn phòng HĐND-UBND',
+        )
+        target = User.objects.create_user(
+            username='target_edit2', email='target_edit2@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Target',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.post(
+            f'/api/accounts/{target.id}/update_info/',
+            {
+                'display_name': 'Target',
+                'username': 'taken_username',
+                'email': 'target_edit2@example.com',
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        target.refresh_from_db()
+        self.assertEqual(target.username, 'target_edit2')
+
+    def test_non_admin_cannot_update_account_info(self):
+        clerk = User.objects.create_user(
+            username='clerk_edit', email='clerk_edit@example.com',
+            password='StrongPass123', role='phong_ban', display_name='Clerk',
+            unit='Văn phòng HĐND-UBND',
+        )
+        target = User.objects.create_user(
+            username='target_edit3', email='target_edit3@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Target',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=clerk)
+
+        response = self.client.post(
+            f'/api/accounts/{target.id}/update_info/',
+            {
+                'display_name': 'Hacked',
+                'username': 'hacked_username',
+                'email': 'hacked@example.com',
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        target.refresh_from_db()
+        self.assertEqual(target.display_name, 'Target')
