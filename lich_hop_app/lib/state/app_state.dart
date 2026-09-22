@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../services/api_client.dart';
+import '../services/push_service.dart' as push;
 
 /// Tai khoan dang nhap dung (JWT hop le) nhung khong co role app nao ca --
 /// vd. superuser ky thuat cua Django (`admin`, tao qua createsuperuser de
@@ -141,8 +142,9 @@ class AppState extends ChangeNotifier {
     _unit = me['unit'] as String?;
     _canManageRooms = me['can_manage_rooms'] as bool? ?? false;
     await _loadAll();
-    await loadNotifications();
+    await loadNotifications(vibrateOnNew: false);
     _startNotifPolling();
+    unawaited(_resyncPushSilently());
   }
 
   /// Tự động kiểm tra thông báo mới mỗi 20 giây — mô phỏng thông báo tức
@@ -153,13 +155,84 @@ class AppState extends ChangeNotifier {
     _notifTimer = Timer.periodic(const Duration(seconds: 20), (_) => loadNotifications());
   }
 
-  Future<void> loadNotifications() async {
+  Future<void> loadNotifications({bool vibrateOnNew = true}) async {
     try {
       final rows = await api.get('notifications/') as List;
-      notifications = rows.cast<Map<String, dynamic>>();
+      final newList = rows.cast<Map<String, dynamic>>();
+      final newUnread = newList.where((n) => n['is_read'] == false).length;
+      // Rung khi co thong bao MOI xuat hien trong luc dang mo app (thong bao
+      // day thuc su chi rung duoc khi app o nen/da dong, xem web/push.js) --
+      // yeu cau 23/09/2026.
+      if (vibrateOnNew && newUnread > unreadNotificationCount) {
+        push.pushVibrate();
+      }
+      notifications = newList;
       notifyListeners();
     } catch (_) {
       // Giu nguyen danh sach cu neu loi mang tam thoi, khong xoa trang.
+    }
+  }
+
+  bool _pushBusy = false;
+  bool get pushSupported => push.isPushSupported;
+  bool get pushEnabled => push.pushPermission == 'granted';
+  bool get pushBusy => _pushBusy;
+
+  /// Neu nguoi dung DA cap quyen thong bao tu truoc (o lan dang nhap khac
+  /// hoac thiet bi khac), tu dong dong bo lai subscription voi backend --
+  /// KHONG xin quyen moi, chi resync am tham khi da 'granted' san.
+  Future<void> _resyncPushSilently() async {
+    if (!push.isPushSupported || push.pushPermission != 'granted') return;
+    await enablePushNotifications(silent: true);
+  }
+
+  /// Xin quyền + đăng ký Web Push, lưu subscription lên backend. Trả về
+  /// thông báo lỗi cụ thể nếu thất bại, null nếu thành công.
+  Future<String?> enablePushNotifications({bool silent = false}) async {
+    if (!push.isPushSupported) {
+      return 'Trình duyệt này không hỗ trợ thông báo đẩy.';
+    }
+    _pushBusy = true;
+    notifyListeners();
+    try {
+      final vapid = await api.get('push/vapid-public-key/') as Map<String, dynamic>;
+      final publicKey = vapid['publicKey'] as String? ?? '';
+      if (publicKey.isEmpty) {
+        return silent ? null : 'Server chưa cấu hình thông báo đẩy.';
+      }
+      final sub = await push.requestPushSubscription(publicKey);
+      if (sub == null) {
+        return silent
+            ? null
+            : 'Bạn đã từ chối hoặc trình duyệt không cho phép bật thông báo.';
+      }
+      await api.post('push/subscribe/', body: {
+        'endpoint': sub.endpoint,
+        'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
+      });
+      return null;
+    } catch (e) {
+      return silent ? null : e.toString();
+    } finally {
+      _pushBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Tắt thông báo đẩy trên trình duyệt hiện tại.
+  Future<void> disablePushNotifications() async {
+    _pushBusy = true;
+    notifyListeners();
+    try {
+      final endpoint = await push.cancelPushSubscription();
+      if (endpoint != null) {
+        await api.post('push/unsubscribe/', body: {'endpoint': endpoint});
+      }
+    } catch (_) {
+      // Bo qua loi -- nguoi dung van thay nhu da tat o phia trinh duyet.
+    } finally {
+      _pushBusy = false;
+      notifyListeners();
     }
   }
 

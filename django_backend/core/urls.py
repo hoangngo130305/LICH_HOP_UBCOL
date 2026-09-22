@@ -18,5 +18,8 @@ urlpatterns = [
     path('auth/refresh/', views.SafeTokenRefreshView.as_view(), name='token_refresh'),
     path('me/', views.MeView.as_view(), name='me'),
     path('vanthu-contact/', views.VanThuContactView.as_view(), name='vanthu-contact'),
+    path('push/vapid-public-key/', views.VapidPublicKeyView.as_view(), name='vapid-public-key'),
+    path('push/subscribe/', views.PushSubscribeView.as_view(), name='push-subscribe'),
+    path('push/unsubscribe/', views.PushUnsubscribeView.as_view(), name='push-unsubscribe'),
     path('', include(router.urls)),
 ]

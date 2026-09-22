@@ -10,6 +10,20 @@ DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
 ALLOWED_HOSTS = ['*']
 
+# Web Push (thong bao day + rung tren dien thoai, yeu cau 23/09/2026).
+# Key mac dinh chi dung cho dev cuc bo -- server that PHAI dat qua bien moi
+# truong rieng (xem ecosystem.config.js) de khong dung chung 1 cap key voi
+# may local.
+VAPID_PUBLIC_KEY = os.environ.get(
+    'VAPID_PUBLIC_KEY',
+    'BKPEmhNqIlgfJ9gdDzlWexg1azTNBAf_8yaDGWvB7XtO1_EuUzuhUAJGle8mxSFVyd6m9rUV84ikcrO6qf9mSlY',
+)
+VAPID_PRIVATE_KEY = os.environ.get(
+    'VAPID_PRIVATE_KEY',
+    'nkCxjtNlkD4UCO97W8hUy1M2MITBgdcPu2Ng5Uv1SF4',
+)
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'admin@caungolanh.gov.vn')
+
 INSTALLED_APPS = [
     'unfold',
     'unfold.contrib.filters',

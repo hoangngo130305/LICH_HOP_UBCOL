@@ -1,6 +1,7 @@
 import unicodedata
 
 from rest_framework import serializers
+from .push import send_push_to_users
 from .models import (
     Member, Room, Meeting, MeetingAttendee, MeetingFile, CheckinRecord, User,
     Notification, ConflictAcknowledgement, FileKind,
@@ -205,6 +206,7 @@ class MeetingSerializer(serializers.ModelSerializer):
         # Thong bao lich hop moi den TOAN BO tai khoan, khong loc theo don vi
         # (theo bien ban hop 22/08/2026, muc 12).
         when = f"{meeting.meeting_date.strftime('%d/%m/%Y')} · {meeting.start_time.strftime('%H:%M')}"
+        recipients = list(User.objects.exclude(id=request.user.id))
         Notification.objects.bulk_create([
             Notification(
                 recipient=user,
@@ -212,8 +214,9 @@ class MeetingSerializer(serializers.ModelSerializer):
                 title='Lịch họp mới',
                 message=f'"{meeting.title}" — {when}',
             )
-            for user in User.objects.exclude(id=request.user.id)
+            for user in recipients
         ])
+        send_push_to_users(recipients, 'Lịch họp mới', f'"{meeting.title}" — {when}')
         return meeting
 
     def update(self, instance, validated_data):
@@ -236,6 +239,7 @@ class MeetingSerializer(serializers.ModelSerializer):
         # (luc tao con dang nhap thi da bo qua thong bao).
         if was_draft and not instance.is_draft:
             when = f"{instance.meeting_date.strftime('%d/%m/%Y')} · {instance.start_time.strftime('%H:%M')}"
+            recipients = list(User.objects.exclude(id=request.user.id))
             Notification.objects.bulk_create([
                 Notification(
                     recipient=user,
@@ -243,8 +247,9 @@ class MeetingSerializer(serializers.ModelSerializer):
                     title='Lịch họp mới',
                     message=f'"{instance.title}" — {when}',
                 )
-                for user in User.objects.exclude(id=request.user.id)
+                for user in recipients
             ])
+            send_push_to_users(recipients, 'Lịch họp mới', f'"{instance.title}" — {when}')
 
         if member_ids is not None:
             new_ids = {m.id for m in member_ids}

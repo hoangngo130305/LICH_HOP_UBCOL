@@ -187,3 +187,24 @@ class Notification(models.Model):
     class Meta:
         db_table = 'notifications'
         ordering = ['-created_at']
+
+
+class PushSubscription(models.Model):
+    """
+    Dang ky Web Push cua 1 trinh duyet/thiet bi (yeu cau 23/09/2026: thong
+    bao day ra thanh trang thai dien thoai + rung). 1 user co the co nhieu
+    dong (nhieu may/trinh duyet dang dang nhap cung luc).
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='push_subscriptions')
+    # KHONG dat unique=True/db_index=True: endpoint co the dai hon gioi han
+    # key index cua MariaDB voi utf8mb4 (mysql.W003), tuy cau hinh server co
+    # the migrate that bai hoac loi khi tao index. So dong it (vai chuc tai
+    # khoan) nen quet thang khong can index; tinh duy nhat da duoc dam bao o
+    # tang ung dung qua update_or_create(endpoint=...) trong PushSubscribeView.
+    endpoint = models.URLField(max_length=500)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'push_subscriptions'

@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from .models import User
+from .models import User, PushSubscription
 from .serializers import UserCreateSerializer
 from .views import EmailTokenObtainPairSerializer
 
@@ -230,3 +230,88 @@ class AccountAuthTests(TestCase):
         self.assertEqual(response.status_code, 403)
         target.refresh_from_db()
         self.assertEqual(target.display_name, 'Target')
+
+
+class PushSubscriptionTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='push_user', email='push_user@example.com',
+            password='StrongPass123', role='thanh_vien', display_name='Push User',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_vapid_public_key_returned(self):
+        response = self.client.get('/api/push/vapid-public-key/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['publicKey'])
+
+    def test_subscribe_creates_subscription(self):
+        response = self.client.post('/api/push/subscribe/', {
+            'endpoint': 'https://fcm.googleapis.com/fcm/send/abc123',
+            'keys': {'p256dh': 'fake-p256dh-key', 'auth': 'fake-auth-key'},
+        }, format='json')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(PushSubscription.objects.count(), 1)
+        sub = PushSubscription.objects.first()
+        self.assertEqual(sub.user, self.user)
+        self.assertEqual(sub.endpoint, 'https://fcm.googleapis.com/fcm/send/abc123')
+
+    def test_subscribe_same_endpoint_updates_not_duplicates(self):
+        endpoint = 'https://fcm.googleapis.com/fcm/send/abc123'
+        self.client.post('/api/push/subscribe/', {
+            'endpoint': endpoint,
+            'keys': {'p256dh': 'key-1', 'auth': 'auth-1'},
+        }, format='json')
+        self.client.post('/api/push/subscribe/', {
+            'endpoint': endpoint,
+            'keys': {'p256dh': 'key-2', 'auth': 'auth-2'},
+        }, format='json')
+
+        self.assertEqual(PushSubscription.objects.count(), 1)
+        self.assertEqual(PushSubscription.objects.first().p256dh, 'key-2')
+
+    def test_subscribe_rejects_missing_fields(self):
+        response = self.client.post('/api/push/subscribe/', {
+            'endpoint': '', 'keys': {},
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(PushSubscription.objects.count(), 0)
+
+    def test_unsubscribe_removes_subscription(self):
+        endpoint = 'https://fcm.googleapis.com/fcm/send/abc123'
+        PushSubscription.objects.create(
+            user=self.user, endpoint=endpoint, p256dh='k', auth='a',
+        )
+
+        response = self.client.post('/api/push/unsubscribe/', {
+            'endpoint': endpoint,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(PushSubscription.objects.count(), 0)
+
+    def test_unsubscribe_only_removes_own_subscription(self):
+        other = User.objects.create_user(
+            username='push_other', email='push_other@example.com',
+            password='StrongPass123', role='thanh_vien', display_name='Other',
+            unit='Văn phòng HĐND-UBND',
+        )
+        endpoint = 'https://fcm.googleapis.com/fcm/send/other-endpoint'
+        PushSubscription.objects.create(
+            user=other, endpoint=endpoint, p256dh='k', auth='a',
+        )
+
+        response = self.client.post('/api/push/unsubscribe/', {
+            'endpoint': endpoint,
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(PushSubscription.objects.count(), 1)
+
+    def test_anonymous_cannot_use_push_endpoints(self):
+        anon_client = APIClient()
+        response = anon_client.get('/api/push/vapid-public-key/')
+        self.assertEqual(response.status_code, 401)

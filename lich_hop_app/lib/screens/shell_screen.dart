@@ -260,6 +260,7 @@ class _TopBar extends StatelessWidget {
               ),
               const SizedBox(width: 10),
             ],
+            const _PushToggleButton(),
             const _NotificationBell(),
             TextButton.icon(
               onPressed: state.logout,
@@ -273,6 +274,58 @@ class _TopBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Nút bật/tắt thông báo đẩy (Web Push) ra thanh trạng thái điện thoại +
+/// rung — yêu cầu 23/09/2026. Ẩn hẳn nếu trình duyệt không hỗ trợ (vd.
+/// Safari iOS khi chưa "Thêm vào màn hình chính").
+class _PushToggleButton extends StatelessWidget {
+  const _PushToggleButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    if (!state.pushSupported) return const SizedBox.shrink();
+    final enabled = state.pushEnabled;
+    return IconButton(
+      tooltip: enabled
+          ? 'Đã bật thông báo đẩy — bấm để tắt'
+          : 'Bật thông báo đẩy trên điện thoại',
+      icon: state.pushBusy
+          ? const SizedBox(
+              width: 15,
+              height: 15,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Color(0xFF8FA8D6)),
+            )
+          : Icon(
+              enabled
+                  ? Icons.notifications_active_outlined
+                  : Icons.notification_add_outlined,
+              color: enabled ? AppColors.accent : const Color(0xFF8FA8D6),
+              size: 18,
+            ),
+      onPressed: state.pushBusy
+          ? null
+          : () async {
+              if (enabled) {
+                await state.disablePushNotifications();
+                if (context.mounted) {
+                  showToast(context, 'Đã tắt thông báo đẩy trên trình duyệt này.');
+                }
+              } else {
+                final error = await state.enablePushNotifications();
+                if (context.mounted) {
+                  showToast(
+                    context,
+                    error ?? 'Đã bật thông báo đẩy — bạn sẽ nhận được kể cả khi tắt tab.',
+                    type: error == null ? NoticeType.ok : NoticeType.warn,
+                  );
+                }
+              }
+            },
     );
   }
 }

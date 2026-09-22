@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from unfold.admin import ModelAdmin, TabularInline
 from .models import (
     User, Member, Room, Meeting, MeetingAttendee, MeetingFile, CheckinRecord,
-    Notification, ConflictAcknowledgement,
+    Notification, ConflictAcknowledgement, PushSubscription,
 )
 
 
@@ -63,3 +63,9 @@ class CheckinRecordAdmin(ModelAdmin):
 class NotificationAdmin(ModelAdmin):
     list_display = ('title', 'recipient', 'meeting', 'is_read', 'created_at')
     list_filter = ('is_read',)
+
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(ModelAdmin):
+    list_display = ('user', 'endpoint', 'created_at')
+    search_fields = ('user__display_name', 'user__email', 'endpoint')

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
@@ -14,7 +15,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import (
     Member, Room, Meeting, MeetingAttendee, MeetingFile, CheckinRecord, User,
-    Notification, ConflictAcknowledgement,
+    Notification, ConflictAcknowledgement, PushSubscription,
 )
 from .permissions import (
     RoomPermission, MeetingPermission, AttendeePermission, MeetingFilePermission,
@@ -98,6 +99,47 @@ class VanThuContactView(APIView):
         if not vt or not vt.member:
             return Response(None)
         return Response(MemberSerializer(vt.member).data)
+
+
+class VapidPublicKeyView(APIView):
+    """Khoa cong khai VAPID de frontend dang ky Web Push (yeu cau 23/09/2026).
+    Khong can bao mat -- key cong khai duoc thiet ke de lo ra ngoai."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({'publicKey': settings.VAPID_PUBLIC_KEY})
+
+
+class PushSubscribeView(APIView):
+    """Luu lai 1 dang ky Web Push cua trinh duyet hien tai cho user dang
+    dang nhap -- goi lai voi cung endpoint se cap nhat (khong tao trung)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        endpoint = (request.data.get('endpoint') or '').strip()
+        keys = request.data.get('keys') or {}
+        p256dh = (keys.get('p256dh') or '').strip()
+        auth = (keys.get('auth') or '').strip()
+        if not endpoint or not p256dh or not auth:
+            return Response(
+                {'detail': 'Thiếu thông tin đăng ký nhận thông báo đẩy.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        PushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={'user': request.user, 'p256dh': p256dh, 'auth': auth},
+        )
+        return Response({'detail': 'Đã bật thông báo đẩy.'}, status=status.HTTP_201_CREATED)
+
+
+class PushUnsubscribeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        endpoint = (request.data.get('endpoint') or '').strip()
+        if endpoint:
+            PushSubscription.objects.filter(endpoint=endpoint, user=request.user).delete()
+        return Response({'detail': 'Đã tắt thông báo đẩy.'})
 
 
 class MemberViewSet(viewsets.ModelViewSet):
