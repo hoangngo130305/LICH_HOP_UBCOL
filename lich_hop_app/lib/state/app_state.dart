@@ -5,6 +5,11 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_client.dart';
 
+/// Tai khoan dang nhap dung (JWT hop le) nhung khong co role app nao ca --
+/// vd. superuser ky thuat cua Django (`admin`, tao qua createsuperuser de
+/// vao /admin/, khong dung de dang nhap app).
+class _NoAppRoleException implements Exception {}
+
 /// Trạng thái toàn ứng dụng: phiên đăng nhập thật (JWT qua backend Django),
 /// dữ liệu lịch họp / phòng họp / thành viên lấy từ MySQL (qua REST API),
 /// và các thao tác thêm / sửa / xóa ghi thẳng xuống máy chủ.
@@ -12,6 +17,13 @@ class AppState extends ChangeNotifier {
   UserRole? _role;
   String _pageId = '';
   bool _loading = false;
+  /// Chỉ true trong lúc khôi phục phiên đăng nhập lúc mở app (kiểm tra token
+  /// đã lưu) — TÁCH RIÊNG khỏi [_loading] của login() (yêu cầu 23/09/2026):
+  /// trước đây dùng chung 1 cờ khiến main.dart gỡ hẳn LoginScreen ra khỏi
+  /// cây widget ngay khi bấm "Đăng nhập", làm toast báo lỗi (sai mật khẩu,
+  /// tài khoản không có role...) không bao giờ kịp hiện ra được vì widget
+  /// gọi showToast đã bị hủy trước khi awaited call quay lại.
+  bool _restoring = false;
   String? _authError;
   String? _lastError;
 
@@ -50,6 +62,7 @@ class AppState extends ChangeNotifier {
   String get pageId => _pageId;
   bool get isLoggedIn => _role != null;
   bool get isLoading => _loading;
+  bool get isRestoring => _restoring;
   String? get authError => _authError;
   String? get lastError => _lastError;
 
@@ -65,11 +78,11 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _restoreSession() async {
-    _loading = true;
+    _restoring = true;
     notifyListeners();
     await api.loadTokens();
     if (!api.hasSession) {
-      _loading = false;
+      _restoring = false;
       notifyListeners();
       return;
     }
@@ -80,7 +93,7 @@ class AppState extends ChangeNotifier {
       _role = null;
       await api.clearSession();
     }
-    _loading = false;
+    _restoring = false;
     notifyListeners();
   }
 
@@ -103,7 +116,12 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _authError = 'Sai email hoặc mật khẩu.';
+      _authError = e is _NoAppRoleException
+          ? 'Tài khoản này không có vai trò sử dụng ứng dụng (có thể là '
+              'tài khoản quản trị kỹ thuật riêng của server). Vui lòng '
+              'dùng tài khoản khác hoặc liên hệ Admin.'
+          : 'Sai email hoặc mật khẩu.';
+      await api.clearSession();
       _loading = false;
       notifyListeners();
       return false;
@@ -112,7 +130,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadProfileAndData() async {
     final me = await api.get('me/') as Map<String, dynamic>;
-    _role = _roleFromDb(me['role'] as String);
+    final role = _roleFromDb(me['role'] as String);
+    if (role == null) throw _NoAppRoleException();
+    _role = role;
     currentUserId = me['id'] as int?;
     final memberObj = me['member'] as Map<String, dynamic>?;
     currentMemberId = memberObj?['id'] as int?;
@@ -830,13 +850,18 @@ class AppState extends ChangeNotifier {
   static String _fmtTime(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
 
-  static UserRole _roleFromDb(String s) => switch (s) {
+  /// Tra ve null (thay vi throw) khi role rong/khong hop le -- vd. tai
+  /// khoan superuser ky thuat cua Django (`admin`, tao bang createsuperuser
+  /// de vao /admin/) khong co role app nao ca. Truoc day throw Exception o
+  /// day khien loi bi nuot vao catch chung cua login() va hien nham thanh
+  /// "Sai email hoac mat khau" du mat khau dung (phan hoi 23/09/2026).
+  static UserRole? _roleFromDb(String s) => switch (s) {
         'lanh_dao' => UserRole.lanhDao,
         'van_thu' => UserRole.vanThu,
         'quan_tri' => UserRole.quanTri,
         'phong_ban' => UserRole.phongBan,
         'thanh_vien' => UserRole.thanhVien,
-        _ => throw Exception('Vai trò không hợp lệ: $s'),
+        _ => null,
       };
 
   static Session _sessionFromDb(String s) => switch (s) {

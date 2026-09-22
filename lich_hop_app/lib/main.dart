@@ -56,7 +56,7 @@ class _Root extends StatelessWidget {
     final state = AppScope.of(context);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
-      child: state.isLoading && !state.isLoggedIn
+      child: state.isRestoring && !state.isLoggedIn
           ? const Scaffold(
               key: ValueKey('splash'),
               body: Center(child: CircularProgressIndicator()),
