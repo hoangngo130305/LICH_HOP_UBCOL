@@ -102475,7 +102475,7 @@ case 3:s=4
 return A.B(p.J(0,"lh_refresh_token"),$async$pA)
 case 4:return A.M(null,r)}})
 return A.N($async$pA,r)},
-VM(a,b){var s=A.jx("http://127.0.0.1:8000/api/"+(B.c.c4(a,"/")?B.c.cG(a,1):a))
+VM(a,b){var s=A.jx("https://lichhop.phuongcauonglanh.vn/api/"+(B.c.c4(a,"/")?B.c.cG(a,1):a))
 return s.a1i(0,null)},
 Ix(a){return this.VM(a,null)},
 Sy(a){var s,r=t.N
