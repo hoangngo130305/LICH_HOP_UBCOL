@@ -9,7 +9,7 @@ from core.models import (
 )
 
 PASSWORD = "admin@123"
-DOMAIN = "caungolanh.gov.vn"
+DOMAIN = "cauonglanh.gov.vn"
 
 
 def slug(name: str) -> str:

@@ -13,7 +13,7 @@ class AccountAuthTests(TestCase):
     def test_login_accepts_username_or_email(self):
         user = User.objects.create_user(
             username='thang_ld',
-            email='dinh.vu.thang@caungolanh.gov.vn',
+            email='dinh.vu.thang@cauonglanh.gov.vn',
             password='StrongPass123',
             role='lanh_dao',
             display_name='Đinh Vũ Thắng',
@@ -25,7 +25,7 @@ class AccountAuthTests(TestCase):
             'password': 'StrongPass123',
         })
         data_by_email = EmailTokenObtainPairSerializer().validate({
-            'username': 'dinh.vu.thang@caungolanh.gov.vn',
+            'username': 'dinh.vu.thang@cauonglanh.gov.vn',
             'password': 'StrongPass123',
         })
 
@@ -38,7 +38,7 @@ class AccountAuthTests(TestCase):
     def test_create_account_allows_custom_username(self):
         serializer = UserCreateSerializer(data={
             'username': 'thang_ld',
-            'email': 'dinh.vu.thang@caungolanh.gov.vn',
+            'email': 'dinh.vu.thang@cauonglanh.gov.vn',
             'password': 'StrongPass123',
             'role': 'lanh_dao',
             'display_name': 'Đinh Vũ Thắng',
@@ -50,7 +50,7 @@ class AccountAuthTests(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
         user = serializer.save()
         self.assertEqual(user.username, 'thang_ld')
-        self.assertEqual(user.email, 'dinh.vu.thang@caungolanh.gov.vn')
+        self.assertEqual(user.email, 'dinh.vu.thang@cauonglanh.gov.vn')
 
     def test_admin_can_delete_another_account(self):
         admin = User.objects.create_user(

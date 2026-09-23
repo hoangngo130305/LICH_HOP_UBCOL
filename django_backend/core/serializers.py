@@ -14,7 +14,7 @@ _EXT_TO_KIND = {
     'png': FileKind.IMG, 'jpg': FileKind.IMG, 'jpeg': FileKind.IMG,
 }
 
-DEFAULT_ACCOUNT_DOMAIN = 'caungolanh.gov.vn'
+DEFAULT_ACCOUNT_DOMAIN = 'cauonglanh.gov.vn'
 
 
 def _slugify_username(name: str) -> str:

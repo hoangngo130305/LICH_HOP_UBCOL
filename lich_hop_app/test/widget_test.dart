@@ -37,11 +37,11 @@ void main() {
   });
 
   final cases = {
-    'Ban Lãnh đạo': 'lanhdao@caungolanh.gov.vn',
-    'Văn thư Ủy ban': 'vanthu.ubnd@caungolanh.gov.vn',
-    'SuperAdmin': 'superadmin@caungolanh.gov.vn',
-    'Văn thư đơn vị': 'vanthu.vanphong@caungolanh.gov.vn',
-    'Thành viên tham dự': 'canbo@caungolanh.gov.vn',
+    'Ban Lãnh đạo': 'lanhdao@cauonglanh.gov.vn',
+    'Văn thư Ủy ban': 'vanthu.ubnd@cauonglanh.gov.vn',
+    'SuperAdmin': 'superadmin@cauonglanh.gov.vn',
+    'Văn thư đơn vị': 'vanthu.vanphong@cauonglanh.gov.vn',
+    'Thành viên tham dự': 'canbo@cauonglanh.gov.vn',
   };
 
   for (final entry in cases.entries) {

@@ -22,7 +22,7 @@ VAPID_PRIVATE_KEY = os.environ.get(
     'VAPID_PRIVATE_KEY',
     'nkCxjtNlkD4UCO97W8hUy1M2MITBgdcPu2Ng5Uv1SF4',
 )
-VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'admin@caungolanh.gov.vn')
+VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'admin@cauonglanh.gov.vn')
 
 INSTALLED_APPS = [
     'unfold',
