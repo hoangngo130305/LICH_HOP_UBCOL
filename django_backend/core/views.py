@@ -15,7 +15,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import (
     Member, Room, Meeting, MeetingAttendee, MeetingFile, CheckinRecord, User,
-    Notification, ConflictAcknowledgement, PushSubscription,
+    Notification, ConflictAcknowledgement, PushSubscription, Role,
 )
 from .permissions import (
     RoomPermission, MeetingPermission, AttendeePermission, MeetingFilePermission,
@@ -377,19 +377,24 @@ class UserAccountViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def update_info(self, request, pk=None):
-        """Admin sua Ho ten / Ten dang nhap / Email cua 1 tai khoan da co
-        (yeu cau 22/09/2026) -- chi quan_tri duoc goi. Dong bo lai ten/email
-        sang Member lien ket (neu co) de danh ba khong bi lech voi tai
-        khoan dang nhap."""
+        """Admin sua Ho ten / Ten dang nhap / Email / Chuc nang (role) cua 1
+        tai khoan da co (yeu cau 22/09/2026, bo sung chon chuc nang 23/09/2026)
+        -- chi quan_tri duoc goi. Dong bo lai ten/email sang Member lien ket
+        (neu co) de danh ba khong bi lech voi tai khoan dang nhap. Truong
+        role la TUY CHON -- neu khong gui thi giu nguyen (khong pha cac noi
+        goi cu chi sua ten/email)."""
         instance = self.get_object()
         display_name = (request.data.get('display_name') or '').strip()
         username = (request.data.get('username') or '').strip()
         email = (request.data.get('email') or '').strip()
+        role = (request.data.get('role') or '').strip()
         if not display_name or not username or not email:
             return Response(
                 {'detail': 'Vui lòng nhập đủ họ tên, tên đăng nhập và email.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if role and role not in Role.values:
+            return Response({'detail': 'Chức năng không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             validate_email(email)
         except DjangoValidationError:
@@ -402,9 +407,32 @@ class UserAccountViewSet(viewsets.ModelViewSet):
         instance.display_name = display_name
         instance.username = username
         instance.email = email
-        instance.save(update_fields=['display_name', 'username', 'email'])
+        update_fields = ['display_name', 'username', 'email']
+        if role:
+            instance.role = role
+            update_fields.append('role')
+        instance.save(update_fields=update_fields)
         if instance.member_id:
             instance.member.name = display_name
             instance.member.email = email
             instance.member.save(update_fields=['name', 'email'])
         return Response(UserAccountSerializer(instance).data)
+
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        """Nguoi dung TU doi mat khau cua CHINH MINH sang mat khau tuy chon
+        (yeu cau 23/09/2026: truoc day chi co reset-ve-mac-dinh do admin goi
+        cho tai khoan NGUOI KHAC, chua co cach nguoi dung tu doi mat khau).
+        Bat ky vai tro nao cung goi duoc, chi tac dong len request.user."""
+        old_password = request.data.get('old_password') or ''
+        new_password = request.data.get('new_password') or ''
+        if not request.user.check_password(old_password):
+            return Response({'detail': 'Mật khẩu hiện tại không đúng.'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(new_password) < 6:
+            return Response(
+                {'detail': 'Mật khẩu mới phải có ít nhất 6 ký tự.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        request.user.set_password(new_password)
+        request.user.save(update_fields=['password'])
+        return Response({'detail': 'Đã đổi mật khẩu thành công.'})

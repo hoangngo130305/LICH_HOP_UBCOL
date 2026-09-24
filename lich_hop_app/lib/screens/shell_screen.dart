@@ -262,6 +262,12 @@ class _TopBar extends StatelessWidget {
             ],
             const _PushToggleButton(),
             const _NotificationBell(),
+            IconButton(
+              icon: const Icon(Icons.lock_outline,
+                  color: Color(0xFF8FA8D6), size: 18),
+              tooltip: 'Đổi mật khẩu',
+              onPressed: () => showChangePasswordDialog(context),
+            ),
             TextButton.icon(
               onPressed: state.logout,
               icon: const Icon(Icons.logout, size: 15),

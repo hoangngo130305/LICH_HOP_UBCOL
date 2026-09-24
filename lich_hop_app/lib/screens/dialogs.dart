@@ -689,32 +689,50 @@ Future<void> showEditAccountDialog(
       TextEditingController(text: account['username'] as String? ?? '');
   final emailCtrl =
       TextEditingController(text: account['email'] as String? ?? '');
+  // Chuc nang (role): danh sach ca 5 vai tro, phan quyen da co san theo
+  // role o backend nen admin chi can chon dung chuc nang (yeu cau 23/09/2026).
+  UserRole role = UserRole.values.firstWhere(
+    (r) => r.dbValue == account['role'],
+    orElse: () => UserRole.thanhVien,
+  );
 
   final ok = await showAppDialog<bool>(
     context,
     title: 'Sửa thông tin tài khoản',
     width: 420,
-    body: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FormField2(
-          'Họ tên',
-          TextField(controller: nameCtrl),
-          required: true,
-        ),
-        FormField2(
-          'Tên đăng nhập',
-          TextField(controller: usernameCtrl),
-          required: true,
-        ),
-        FormField2(
-          'Email',
-          TextField(controller: emailCtrl),
-          required: true,
-        ),
-      ],
-    ),
+    body: StatefulBuilder(builder: (context, setLocal) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FormField2(
+            'Họ tên',
+            TextField(controller: nameCtrl),
+            required: true,
+          ),
+          FormField2(
+            'Tên đăng nhập',
+            TextField(controller: usernameCtrl),
+            required: true,
+          ),
+          FormField2(
+            'Email',
+            TextField(controller: emailCtrl),
+            required: true,
+          ),
+          FormField2(
+            'Chức năng',
+            AppDropdown<UserRole>(
+              value: role,
+              items: UserRole.values,
+              labelOf: (r) => r.label,
+              onChanged: (v) => setLocal(() => role = v ?? role),
+            ),
+            required: true,
+          ),
+        ],
+      );
+    }),
     actions: [
       GhostButton('Hủy', onPressed: () => Navigator.of(context).pop(false)),
       PrimaryButton('Lưu thay đổi',
@@ -736,6 +754,7 @@ Future<void> showEditAccountDialog(
         displayName: name,
         username: username,
         email: email,
+        role: role.dbValue,
       );
       if (context.mounted) {
         showToast(
@@ -750,6 +769,84 @@ Future<void> showEditAccountDialog(
   nameCtrl.dispose();
   usernameCtrl.dispose();
   emailCtrl.dispose();
+}
+
+/// Người dùng TỰ đổi mật khẩu của chính mình sang mật khẩu tùy chọn (yêu cầu
+/// 23/09/2026) — mở từ nút khóa trên thanh trên cùng, dùng được cho MỌI vai
+/// trò, khác với "Đặt lại mật khẩu mặc định" (chỉ admin gọi cho người khác).
+Future<void> showChangePasswordDialog(BuildContext context) async {
+  final state = AppScope.read(context);
+  final oldCtrl = TextEditingController();
+  final newCtrl = TextEditingController();
+  final confirmCtrl = TextEditingController();
+
+  final ok = await showAppDialog<bool>(
+    context,
+    title: 'Đổi mật khẩu',
+    width: 400,
+    body: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FormField2(
+          'Mật khẩu hiện tại',
+          TextField(controller: oldCtrl, obscureText: true),
+          required: true,
+        ),
+        FormField2(
+          'Mật khẩu mới',
+          TextField(
+            controller: newCtrl,
+            obscureText: true,
+            decoration: const InputDecoration(hintText: 'Tối thiểu 6 ký tự'),
+          ),
+          required: true,
+        ),
+        FormField2(
+          'Nhập lại mật khẩu mới',
+          TextField(controller: confirmCtrl, obscureText: true),
+          required: true,
+        ),
+      ],
+    ),
+    actions: [
+      GhostButton('Hủy', onPressed: () => Navigator.of(context).pop(false)),
+      PrimaryButton('Đổi mật khẩu',
+          icon: Icons.lock_reset,
+          onPressed: () => Navigator.of(context).pop(true)),
+    ],
+  );
+
+  if (ok == true && context.mounted) {
+    final oldPass = oldCtrl.text.trim();
+    final newPass = newCtrl.text.trim();
+    final confirmPass = confirmCtrl.text.trim();
+    if (oldPass.isEmpty || newPass.isEmpty) {
+      showToast(context, 'Vui lòng nhập đủ mật khẩu hiện tại và mật khẩu mới',
+          type: NoticeType.warn);
+    } else if (newPass.length < 6) {
+      showToast(context, 'Mật khẩu mới phải có ít nhất 6 ký tự',
+          type: NoticeType.warn);
+    } else if (newPass != confirmPass) {
+      showToast(context, 'Mật khẩu nhập lại không khớp', type: NoticeType.warn);
+    } else {
+      final error = await state.changePassword(
+        oldPassword: oldPass,
+        newPassword: newPass,
+      );
+      if (context.mounted) {
+        showToast(
+          context,
+          error == null ? 'Đã đổi mật khẩu thành công' : 'Đổi mật khẩu thất bại: $error',
+          type: error == null ? NoticeType.ok : NoticeType.warn,
+        );
+      }
+    }
+  }
+
+  oldCtrl.dispose();
+  newCtrl.dispose();
+  confirmCtrl.dispose();
 }
 
 /// Đổi phòng họp cho một cuộc họp đang trùng lịch.

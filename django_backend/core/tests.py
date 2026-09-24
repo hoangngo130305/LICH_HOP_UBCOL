@@ -205,6 +205,60 @@ class AccountAuthTests(TestCase):
         target.refresh_from_db()
         self.assertEqual(target.username, 'target_edit2')
 
+    def test_admin_can_update_account_role(self):
+        admin = User.objects.create_user(
+            username='admin_edit3', email='admin_edit3@example.com',
+            password='StrongPass123', role='quan_tri', display_name='Admin',
+            unit='Văn phòng HĐND-UBND',
+        )
+        target = User.objects.create_user(
+            username='target_edit4', email='target_edit4@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Target',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.post(
+            f'/api/accounts/{target.id}/update_info/',
+            {
+                'display_name': 'Target',
+                'username': 'target_edit4',
+                'email': 'target_edit4@example.com',
+                'role': 'van_thu',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        target.refresh_from_db()
+        self.assertEqual(target.role, 'van_thu')
+
+    def test_update_account_info_rejects_invalid_role(self):
+        admin = User.objects.create_user(
+            username='admin_edit4', email='admin_edit4@example.com',
+            password='StrongPass123', role='quan_tri', display_name='Admin',
+            unit='Văn phòng HĐND-UBND',
+        )
+        target = User.objects.create_user(
+            username='target_edit5', email='target_edit5@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Target',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.post(
+            f'/api/accounts/{target.id}/update_info/',
+            {
+                'display_name': 'Target',
+                'username': 'target_edit5',
+                'email': 'target_edit5@example.com',
+                'role': 'khong_hop_le',
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        target.refresh_from_db()
+        self.assertEqual(target.role, 'thanh_vien')
+
     def test_non_admin_cannot_update_account_info(self):
         clerk = User.objects.create_user(
             username='clerk_edit', email='clerk_edit@example.com',
@@ -230,6 +284,65 @@ class AccountAuthTests(TestCase):
         self.assertEqual(response.status_code, 403)
         target.refresh_from_db()
         self.assertEqual(target.display_name, 'Target')
+
+
+    def test_user_can_change_own_password(self):
+        user = User.objects.create_user(
+            username='self_pass', email='self_pass@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Self',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post('/api/accounts/change_password/', {
+            'old_password': 'OldPass123',
+            'new_password': 'MyOwnNewPass456',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('MyOwnNewPass456'))
+
+    def test_change_password_rejects_wrong_old_password(self):
+        user = User.objects.create_user(
+            username='self_pass2', email='self_pass2@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Self',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post('/api/accounts/change_password/', {
+            'old_password': 'WrongPass',
+            'new_password': 'MyOwnNewPass456',
+        })
+
+        self.assertEqual(response.status_code, 400)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('OldPass123'))
+
+    def test_change_password_rejects_short_new_password(self):
+        user = User.objects.create_user(
+            username='self_pass3', email='self_pass3@example.com',
+            password='OldPass123', role='thanh_vien', display_name='Self',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post('/api/accounts/change_password/', {
+            'old_password': 'OldPass123',
+            'new_password': 'abc',
+        })
+
+        self.assertEqual(response.status_code, 400)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('OldPass123'))
+
+    def test_anonymous_cannot_change_password(self):
+        anon_client = APIClient()
+        response = anon_client.post('/api/accounts/change_password/', {
+            'old_password': 'x', 'new_password': 'yyyyyy',
+        })
+        self.assertEqual(response.status_code, 401)
 
 
 class PushSubscriptionTests(TestCase):

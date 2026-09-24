@@ -113,6 +113,11 @@ class UserManagementPermission(BasePermission):
     """
 
     def has_permission(self, request, view):
+        # Tu doi mat khau cua CHINH MINH: bat ky vai tro nao cung goi duoc
+        # (khong phai quan ly tai khoan nguoi khac nen khong ap dung phan
+        # cap ben duoi). View tu kiem tra mat khau cu + chi doi request.user.
+        if getattr(view, 'action', None) == 'change_password':
+            return True
         if request.method in SAFE_METHODS:
             return role(request) in ('quan_tri', 'phong_ban')
         # Dat lai mat khau / sua thong tin tai khoan: chi quan_tri, kiem tra

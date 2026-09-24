@@ -39,6 +39,18 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
   bool get _isUbnd => widget.level == MeetingLevel.uyBan;
   bool get _isEditing => _editingId != null;
 
+  /// Lựa chọn "Khác" trong dropdown Phòng họp — cho phép nhập tay địa điểm
+  /// ngoài trụ sở phường (yêu cầu 23/09/2026: lịch cấp Ủy ban đôi khi họp ở
+  /// nơi khác, không chỉ 4 phòng cố định trong trụ sở).
+  static const _customLocationRoom = Room(
+    id: -1,
+    name: 'Khác — Địa điểm ngoài trụ sở',
+    location: '',
+    capacity: 0,
+    status: RoomStatus.free,
+  );
+  bool get _useCustomLocation => _room?.id == _customLocationRoom.id;
+
   /// Danh sách 5 lãnh đạo phường – cài đặt sẵn (preset) để chọn nhanh khi
   /// tạo lịch họp cấp Ủy ban (theo biên bản họp 22/08/2026: bỏ ô "Chủ trì
   /// cuộc họp" tự gõ tay, đổi "Đơn vị chủ trì" thành "Người chủ trì").
@@ -63,7 +75,8 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
       _contentCtrl.text = editing.content;
       _hostCtrl.text = editing.host;
       _sizeCtrl.text = '20';
-      _placeCtrl.text = _isUbnd ? '' : editing.room;
+      _placeCtrl.text =
+          _isUbnd ? (editing.roomId == null ? editing.room : '') : editing.room;
       _date = editing.date;
       _time = editing.time;
       _session = editing.session;
@@ -72,11 +85,13 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
           : (editing.unit ?? (units.isEmpty ? null : units.first));
       _members = List.of(editing.memberIds);
       _existingFiles = List.of(editing.files);
-      if (_isUbnd && editing.roomId != null) {
-        _room = state.rooms.where((r) => r.id == editing.roomId).firstOrNull;
+      if (_isUbnd) {
+        _room = editing.roomId != null
+            ? state.rooms.where((r) => r.id == editing.roomId).firstOrNull
+            : _customLocationRoom;
       }
     } else {
-      _placeCtrl.text = 'Tại phòng làm việc ${state.unitLabel}';
+      _placeCtrl.text = _isUbnd ? '' : 'Tại phòng làm việc ${state.unitLabel}';
       _unit = _isUbnd
           ? (leaders.isEmpty ? null : leaders.first)
           : (units.isEmpty ? null : units.first);
@@ -118,7 +133,7 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
 
   /// Cảnh báo trùng phòng theo lựa chọn hiện tại.
   Meeting? get _clash {
-    if (!_isUbnd || _room == null) return null;
+    if (!_isUbnd || _room == null || _useCustomLocation) return null;
     final state = AppScope.of(context);
     for (final m in state.ubndMeetings) {
       if (_isEditing && m.id == _editingId) continue;
@@ -175,11 +190,20 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
           type: NoticeType.warn);
       return;
     }
+    if (_isUbnd && _useCustomLocation && _placeCtrl.text.trim().isEmpty) {
+      showToast(context, 'Vui lòng nhập địa điểm họp',
+          type: NoticeType.warn);
+      return;
+    }
 
     setState(() => _submitting = true);
     final host =
         _hostCtrl.text.trim().isEmpty ? 'Chưa phân công' : _hostCtrl.text.trim();
     final estimated = int.tryParse(_sizeCtrl.text.trim());
+    final roomId = _isUbnd && !_useCustomLocation ? _room?.id : null;
+    final locationText = _isUbnd
+        ? (_useCustomLocation ? _placeCtrl.text.trim() : null)
+        : _placeCtrl.text.trim();
 
     final bool ok;
     if (_isEditing) {
@@ -192,8 +216,8 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
         content: _contentCtrl.text.trim(),
         memberIds: _members,
         host: host,
-        roomId: _isUbnd ? _room?.id : null,
-        locationText: _isUbnd ? null : _placeCtrl.text.trim(),
+        roomId: roomId,
+        locationText: locationText,
         unit: _isUbnd ? _unit : state.unit,
         estimatedPeople: estimated,
         keepExistingFiles: _existingFiles,
@@ -210,8 +234,8 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
         host: host,
         memberIds: _members,
         content: _contentCtrl.text.trim(),
-        roomId: _isUbnd ? _room?.id : null,
-        locationText: _isUbnd ? null : _placeCtrl.text.trim(),
+        roomId: roomId,
+        locationText: locationText,
         unit: _isUbnd ? _unit : state.unit,
         estimatedPeople: estimated,
         newFiles: _newFiles,
@@ -252,17 +276,21 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
               : 'Phòng tự tổ chức tại phòng làm việc',
         ),
         if (_isUbnd)
-          clash == null
+          _useCustomLocation
               ? const Notice(
-                  'Phòng họp đang trống trong buổi đã chọn. Có thể đăng ký lịch.',
-                  type: NoticeType.ok,
+                  'Địa điểm ngoài trụ sở — hệ thống không cảnh báo trùng lịch cho lựa chọn này.',
                 )
-              : Notice(
-                  '${_room?.name ?? ''} đã có "${clash.title}" lúc ${clash.timeLabel} '
-                  '(${clash.session.label.toLowerCase()}) ngày ${VnDate.dm(_date)}. '
-                  'Hệ thống chỉ cảnh báo, vẫn cho phép lưu — hãy xác nhận với các bên liên quan.',
-                  type: NoticeType.warn,
-                )
+              : (clash == null
+                  ? const Notice(
+                      'Phòng họp đang trống trong buổi đã chọn. Có thể đăng ký lịch.',
+                      type: NoticeType.ok,
+                    )
+                  : Notice(
+                      '${_room?.name ?? ''} đã có "${clash.title}" lúc ${clash.timeLabel} '
+                      '(${clash.session.label.toLowerCase()}) ngày ${VnDate.dm(_date)}. '
+                      'Hệ thống chỉ cảnh báo, vẫn cho phép lưu — hãy xác nhận với các bên liên quan.',
+                      type: NoticeType.warn,
+                    ))
         else
           const Notice(
             'Lịch họp này do phòng tự tổ chức tại phòng làm việc. '
@@ -344,14 +372,16 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
               ),
               const _FormSection(
                   'Địa điểm & Thành phần', Icons.meeting_room_outlined),
-              if (_isUbnd)
+              if (_isUbnd) ...[
                 _twoCols(
                   FormField2(
                     'Phòng họp',
                     AppDropdown<Room>(
                       value: _room,
-                      items: state.rooms,
-                      labelOf: (r) => '${r.name} – ${r.location}',
+                      items: [...state.rooms, _customLocationRoom],
+                      labelOf: (r) => r.id == _customLocationRoom.id
+                          ? r.name
+                          : '${r.name} – ${r.location}',
                       onChanged: (v) => setState(() => _room = v ?? _room),
                     ),
                   ),
@@ -362,8 +392,18 @@ class _MeetingFormPageState extends State<MeetingFormPage> {
                       keyboardType: TextInputType.number,
                     ),
                   ),
-                )
-              else
+                ),
+                if (_useCustomLocation)
+                  FormField2(
+                    'Địa điểm cụ thể',
+                    TextField(
+                      controller: _placeCtrl,
+                      decoration: const InputDecoration(
+                          hintText: 'VD: Hội trường Quận ủy, 123 Nguyễn Huệ...'),
+                    ),
+                    required: true,
+                  ),
+              ] else
                 FormField2(
                   'Địa điểm họp',
                   TextField(controller: _placeCtrl),

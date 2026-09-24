@@ -746,20 +746,41 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Sửa Họ tên / Tên đăng nhập / Email của 1 tài khoản đã có (yêu cầu
-  /// 22/09/2026). Cập nhật lại luôn dòng tương ứng trong [_accounts] để
-  /// giao diện phản ánh ngay, không cần tải lại cả danh sách.
+  /// Người dùng TỰ đổi mật khẩu của CHÍNH MÌNH sang mật khẩu tùy chọn (yêu
+  /// cầu 23/09/2026) -- khác với [resetPassword] ở trên (admin đặt về mặc
+  /// định cho tài khoản NGƯỜI KHÁC khi họ quên mật khẩu).
+  Future<String?> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await api.post('accounts/change_password/', body: {
+        'old_password': oldPassword,
+        'new_password': newPassword,
+      });
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Sửa Họ tên / Tên đăng nhập / Email / Chức năng (role) của 1 tài khoản
+  /// đã có (yêu cầu 22/09/2026, bổ sung chọn chức năng 23/09/2026 — phân
+  /// quyền đã có sẵn theo role, admin chỉ cần chọn lại chức năng đúng).
+  /// [role] để null nếu không đổi chức năng.
   Future<String?> updateAccountInfo(
     int id, {
     required String displayName,
     required String username,
     required String email,
+    String? role,
   }) async {
     try {
       final res = await api.post('accounts/$id/update_info/', body: {
         'display_name': displayName,
         'username': username,
         'email': email,
+        if (role != null) 'role': role,
       }) as Map<String, dynamic>;
       final idx = _accounts.indexWhere((a) => a['id'] == id);
       if (idx != -1) _accounts[idx] = res;
