@@ -1,8 +1,12 @@
+import datetime
+
+from django.core.management import call_command
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import User, PushSubscription
-from .serializers import UserCreateSerializer
+from .models import Meeting, Notification, Room, User, PushSubscription
+from .serializers import UserCreateSerializer, _meeting_notification_message
 from .views import EmailTokenObtainPairSerializer
 
 
@@ -428,3 +432,91 @@ class PushSubscriptionTests(TestCase):
         anon_client = APIClient()
         response = anon_client.get('/api/push/vapid-public-key/')
         self.assertEqual(response.status_code, 401)
+
+
+class DailyReminderCommandTests(TestCase):
+    """send_daily_reminders: nhac lai TOAN BO lich hop trong ngay hom nay
+    cho TOAN BO tai khoan (yeu cau 02/10/2026, chay qua cron 6h sang)."""
+
+    def setUp(self):
+        self.user_a = User.objects.create_user(
+            username='reminder_a', email='reminder_a@example.com',
+            password='StrongPass123', role='thanh_vien', display_name='A',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.user_b = User.objects.create_user(
+            username='reminder_b', email='reminder_b@example.com',
+            password='StrongPass123', role='van_thu', display_name='B',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.room = Room.objects.create(
+            name='Phòng họp test', location='Lầu 1', capacity=10,
+        )
+
+    def test_no_notification_when_no_meeting_today(self):
+        call_command('send_daily_reminders')
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_notifies_all_users_for_each_meeting_today(self):
+        Meeting.objects.create(
+            title='Họp test nhắc lịch', meeting_date=timezone.localdate(),
+            start_time='09:00:00', session='am', level='uy_ban',
+            room=self.room, unit='Văn phòng', host='Test', content='',
+            is_draft=False, created_by=self.user_b,
+        )
+
+        call_command('send_daily_reminders')
+
+        self.assertEqual(Notification.objects.count(), 2)
+        notif = Notification.objects.filter(recipient=self.user_a).get()
+        self.assertIsNone(notif.meeting)
+        self.assertIn('1 cuộc họp', notif.title)
+        self.assertIn('Họp test nhắc lịch', notif.message)
+
+    def test_ignores_draft_and_postponed_meetings(self):
+        Meeting.objects.create(
+            title='Nháp', meeting_date=timezone.localdate(),
+            start_time='09:00:00', session='am', level='uy_ban',
+            room=self.room, unit='Văn phòng', host='Test', content='',
+            is_draft=True, created_by=self.user_b,
+        )
+        Meeting.objects.create(
+            title='Đã hoãn', meeting_date=timezone.localdate(),
+            start_time='10:00:00', session='am', level='uy_ban',
+            room=self.room, unit='Văn phòng', host='Test', content='',
+            postponed=True, created_by=self.user_b,
+        )
+
+        call_command('send_daily_reminders')
+
+        self.assertEqual(Notification.objects.count(), 0)
+
+
+class MeetingNotificationMessageTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='msg_test', email='msg_test@example.com',
+            password='StrongPass123', role='van_thu', display_name='Test',
+            unit='Văn phòng HĐND-UBND',
+        )
+
+    def test_message_uses_room_name_when_room_set(self):
+        room = Room.objects.create(name='Phòng Chủ tịch', location='Lầu 1', capacity=10)
+        meeting = Meeting.objects.create(
+            title='Họp A', meeting_date=timezone.localdate(), start_time=datetime.time(9, 0),
+            session='am', level='uy_ban', room=room, unit='Văn phòng',
+            host='Test', content='', created_by=self.user,
+        )
+        message = _meeting_notification_message(meeting)
+        self.assertIn('Họp A', message)
+        self.assertIn('Phòng Chủ tịch', message)
+
+    def test_message_uses_location_text_when_no_room(self):
+        meeting = Meeting.objects.create(
+            title='Họp B', meeting_date=timezone.localdate(), start_time=datetime.time(9, 0),
+            session='am', level='uy_ban', location_text='Hội trường Quận 1',
+            unit='Văn phòng', host='Test', content='', created_by=self.user,
+        )
+        message = _meeting_notification_message(meeting)
+        self.assertIn('Họp B', message)
+        self.assertIn('Hội trường Quận 1', message)

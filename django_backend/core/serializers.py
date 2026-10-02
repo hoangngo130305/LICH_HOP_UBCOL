@@ -172,6 +172,22 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'meeting', 'meeting_title', 'title', 'message', 'is_read', 'created_at']
 
 
+def _meeting_where(meeting):
+    """Chuoi mo ta dia diem de nhet vao noi dung thong bao -- uu tien ten
+    phong hop, neu khong co (dia diem ngoai tru so) thi dung location_text."""
+    if meeting.room_id:
+        return meeting.room.name
+    return meeting.location_text or 'chưa rõ địa điểm'
+
+
+def _meeting_notification_message(meeting):
+    """Cau thong bao de doc hon cho nguoi nhan (yeu cau 02/10/2026: thay vi
+    chi '"<ten>" — <ngay gio>', can ro rang la LOI MOI/BAO CHO ai do, kem
+    dia diem)."""
+    when = f"{meeting.meeting_date.strftime('%d/%m/%Y')} lúc {meeting.start_time.strftime('%H:%M')}"
+    return f'Bạn có lịch họp mới "{meeting.title}" vào {when}, tại {_meeting_where(meeting)}.'
+
+
 class MeetingSerializer(serializers.ModelSerializer):
     attendees = MeetingAttendeeSerializer(many=True, read_only=True)
     files = MeetingFileSerializer(many=True, read_only=True)
@@ -205,18 +221,18 @@ class MeetingSerializer(serializers.ModelSerializer):
 
         # Thong bao lich hop moi den TOAN BO tai khoan, khong loc theo don vi
         # (theo bien ban hop 22/08/2026, muc 12).
-        when = f"{meeting.meeting_date.strftime('%d/%m/%Y')} · {meeting.start_time.strftime('%H:%M')}"
+        message = _meeting_notification_message(meeting)
         recipients = list(User.objects.exclude(id=request.user.id))
         Notification.objects.bulk_create([
             Notification(
                 recipient=user,
                 meeting=meeting,
                 title='Lịch họp mới',
-                message=f'"{meeting.title}" — {when}',
+                message=message,
             )
             for user in recipients
         ])
-        send_push_to_users(recipients, 'Lịch họp mới', f'"{meeting.title}" — {when}')
+        send_push_to_users(recipients, 'Lịch họp mới', message)
         return meeting
 
     def update(self, instance, validated_data):
@@ -238,18 +254,18 @@ class MeetingSerializer(serializers.ModelSerializer):
         # Lich tu nhap chuyen sang cong bo chinh thuc: gui thong bao luc nay
         # (luc tao con dang nhap thi da bo qua thong bao).
         if was_draft and not instance.is_draft:
-            when = f"{instance.meeting_date.strftime('%d/%m/%Y')} · {instance.start_time.strftime('%H:%M')}"
+            message = _meeting_notification_message(instance)
             recipients = list(User.objects.exclude(id=request.user.id))
             Notification.objects.bulk_create([
                 Notification(
                     recipient=user,
                     meeting=instance,
                     title='Lịch họp mới',
-                    message=f'"{instance.title}" — {when}',
+                    message=message,
                 )
                 for user in recipients
             ])
-            send_push_to_users(recipients, 'Lịch họp mới', f'"{instance.title}" — {when}')
+            send_push_to_users(recipients, 'Lịch họp mới', message)
 
         if member_ids is not None:
             new_ids = {m.id for m in member_ids}
