@@ -223,11 +223,17 @@ class AppState extends ChangeNotifier {
       if (publicKey.isEmpty) {
         return silent ? null : 'Server chưa cấu hình thông báo đẩy.';
       }
-      final sub = await push.requestPushSubscription(publicKey);
+      // Timeout phong ho: tung gap truong hop navigator.serviceWorker.ready
+      // treo vo han tren iPhone (service worker khong bao gio duoc dang ky)
+      // -- thoi gian cho that da sua o web/push.js, nhung van gioi han o day
+      // de nut "Bat thong bao day" khong bao gio xoay vong mai mai nua.
+      final sub = await push
+          .requestPushSubscription(publicKey)
+          .timeout(const Duration(seconds: 15), onTimeout: () => null);
       if (sub == null) {
         return silent
             ? null
-            : 'Bạn đã từ chối hoặc trình duyệt không cho phép bật thông báo.';
+            : 'Bạn đã từ chối, hoặc trình duyệt mất quá lâu để bật thông báo. Vui lòng thử lại.';
       }
       await api.post('push/subscribe/', body: {
         'endpoint': sub.endpoint,
