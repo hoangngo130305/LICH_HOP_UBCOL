@@ -290,16 +290,6 @@ class AppState extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Chỉ Lãnh đạo hoặc Trưởng/Phó phòng mới được bấm "Xác nhận tham gia"
-  /// (theo biên bản họp 22/08/2026) — các cán bộ khác chỉ được xem.
-  bool get canConfirmAttendance =>
-      _role == UserRole.lanhDao ||
-      _role == UserRole.vanThu ||
-      _role == UserRole.phongBan ||
-      _role == UserRole.quanTri ||
-      (_myTitle != null &&
-          (_myTitle!.contains('Trưởng') || _myTitle!.contains('Phó')));
-
   Future<void> logout() async {
     _notifTimer?.cancel();
     notifications = [];

@@ -86,14 +86,11 @@ class AttendeePermission(BasePermission):
         if request.method in ('PATCH', 'PUT'):
             if role(request) in ('van_thu', 'phong_ban', 'quan_tri'):
                 return True
-            # Tu xac nhan tham du chinh minh: chi Lanh dao hoac Truong/Pho phong
-            # (theo bien ban hop 22/08/2026) moi duoc bam "Xac nhan tham gia".
-            if obj.member_id == member_id(request):
-                if role(request) == 'lanh_dao':
-                    return True
-                title = (getattr(request.user.member, 'title', '') or '') if request.user.member_id else ''
-                return any(k in title for k in ('Trưởng', 'Phó'))
-            return False
+            # Tu xac nhan tham du chinh minh: BAT KY ai duoc moi cung duoc bam
+            # "Xac nhan tham gia" (yeu cau 02/10/2026 -- truoc day chi Lanh dao
+            # hoac Truong/Pho phong moi duoc, theo bien ban hop 22/08/2026,
+            # nay bo gioi han do).
+            return obj.member_id == member_id(request)
         return False
 
 

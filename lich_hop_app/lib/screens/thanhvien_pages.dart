@@ -69,9 +69,10 @@ class InviteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final rsvp = state.rsvpOf(meeting.id);
-    // Chỉ Lãnh đạo và Trưởng/Phó phòng được bấm "Xác nhận tham gia"
-    // (theo biên bản họp 22/08/2026) — cán bộ khác chỉ xem trạng thái.
-    final canConfirm = showActions && state.canConfirmAttendance;
+    // Moi nguoi duoc moi deu tu xac nhan tham du duoc cho chinh minh (yeu
+    // cau 02/10/2026 -- truoc day chi Lanh dao/Truong/Pho phong moi bam
+    // duoc, theo bien ban hop 22/08/2026, nay bo gioi han do).
+    final canConfirm = showActions;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -161,12 +162,7 @@ class InviteCard extends StatelessWidget {
                       icon: Icons.close,
                       color: AppColors.danger,
                       onPressed: () => _decline(context)),
-                if (!canConfirm) ...[
-                  AppBadge.rsvp(rsvp),
-                  if (showActions)
-                    const Text('Chỉ Lãnh đạo/Trưởng, Phó phòng xác nhận được',
-                        style: TextStyle(fontSize: 10.5, color: AppColors.tm)),
-                ],
+                if (!canConfirm) AppBadge.rsvp(rsvp),
                 ChipButton(Icons.info_outline,
                     label: 'Chi tiết & Danh sách',
                     onTap: () =>

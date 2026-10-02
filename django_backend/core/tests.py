@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import Meeting, Notification, Room, User, PushSubscription
+from .models import Meeting, MeetingAttendee, Member, Notification, Room, User, PushSubscription
 from .serializers import PUSH_GENERIC_MESSAGE, UserCreateSerializer, _meeting_notification_message
 from .views import EmailTokenObtainPairSerializer
 
@@ -506,3 +506,66 @@ class MeetingUpdateNotificationTests(TestCase):
         args, _ = mock_push.call_args
         self.assertEqual(args[1], 'Lịch họp cập nhật')
         self.assertEqual(args[2], PUSH_GENERIC_MESSAGE)
+
+
+class AttendeeSelfConfirmTests(TestCase):
+    """Bat ky ai duoc moi cung tu xac nhan tham du duoc cho chinh minh (yeu
+    cau 02/10/2026) -- truoc day chi Lanh dao/Truong/Pho phong moi duoc."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.room = Room.objects.create(name='Phòng test', location='Lầu 1', capacity=10)
+        self.creator = User.objects.create_user(
+            username='attendee_creator', email='attendee_creator@example.com',
+            password='StrongPass123', role='van_thu', display_name='Creator',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.staff_member = Member.objects.create(
+            name='Nhân viên thường', title='Chuyên viên', unit='Văn phòng HĐND-UBND',
+            initials='NV', color='blue',
+        )
+        self.staff_user = User.objects.create_user(
+            username='plain_staff', email='plain_staff@example.com',
+            password='StrongPass123', role='thanh_vien', display_name='Nhân viên thường',
+            unit='Văn phòng HĐND-UBND', member=self.staff_member,
+        )
+        self.meeting = Meeting.objects.create(
+            title='Họp cần xác nhận', meeting_date=timezone.localdate(),
+            start_time=datetime.time(9, 0), session='am', level='uy_ban',
+            room=self.room, unit='Văn phòng', host='Creator', content='',
+            is_draft=False, created_by=self.creator,
+        )
+        self.attendee = MeetingAttendee.objects.create(
+            meeting=self.meeting, member=self.staff_member,
+        )
+        self.client.force_authenticate(user=self.staff_user)
+
+    def test_plain_staff_member_can_self_confirm(self):
+        response = self.client.patch(
+            f'/api/meeting-attendees/{self.attendee.id}/respond/', {'status': 'accepted'}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.status, 'accepted')
+
+    def test_plain_staff_member_can_self_decline(self):
+        response = self.client.patch(
+            f'/api/meeting-attendees/{self.attendee.id}/respond/',
+            {'status': 'declined', 'decline_reason': 'Bận việc khác'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.status, 'declined')
+
+    def test_cannot_confirm_someone_elses_attendance(self):
+        other_member = Member.objects.create(
+            name='Người khác', title='Chuyên viên', unit='Văn phòng HĐND-UBND',
+            initials='NK', color='green',
+        )
+        other_attendee = MeetingAttendee.objects.create(
+            meeting=self.meeting, member=other_member,
+        )
+        response = self.client.patch(
+            f'/api/meeting-attendees/{other_attendee.id}/respond/', {'status': 'accepted'}
+        )
+        self.assertEqual(response.status_code, 403)
