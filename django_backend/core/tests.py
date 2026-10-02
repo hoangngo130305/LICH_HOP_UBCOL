@@ -1,12 +1,12 @@
 import datetime
+from unittest.mock import patch
 
-from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from .models import Meeting, Notification, Room, User, PushSubscription
-from .serializers import UserCreateSerializer, _meeting_notification_message
+from .serializers import PUSH_GENERIC_MESSAGE, UserCreateSerializer, _meeting_notification_message
 from .views import EmailTokenObtainPairSerializer
 
 
@@ -434,64 +434,6 @@ class PushSubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
 
-class DailyReminderCommandTests(TestCase):
-    """send_daily_reminders: nhac lai TOAN BO lich hop trong ngay hom nay
-    cho TOAN BO tai khoan (yeu cau 02/10/2026, chay qua cron 6h sang)."""
-
-    def setUp(self):
-        self.user_a = User.objects.create_user(
-            username='reminder_a', email='reminder_a@example.com',
-            password='StrongPass123', role='thanh_vien', display_name='A',
-            unit='Văn phòng HĐND-UBND',
-        )
-        self.user_b = User.objects.create_user(
-            username='reminder_b', email='reminder_b@example.com',
-            password='StrongPass123', role='van_thu', display_name='B',
-            unit='Văn phòng HĐND-UBND',
-        )
-        self.room = Room.objects.create(
-            name='Phòng họp test', location='Lầu 1', capacity=10,
-        )
-
-    def test_no_notification_when_no_meeting_today(self):
-        call_command('send_daily_reminders')
-        self.assertEqual(Notification.objects.count(), 0)
-
-    def test_notifies_all_users_for_each_meeting_today(self):
-        Meeting.objects.create(
-            title='Họp test nhắc lịch', meeting_date=timezone.localdate(),
-            start_time='09:00:00', session='am', level='uy_ban',
-            room=self.room, unit='Văn phòng', host='Test', content='',
-            is_draft=False, created_by=self.user_b,
-        )
-
-        call_command('send_daily_reminders')
-
-        self.assertEqual(Notification.objects.count(), 2)
-        notif = Notification.objects.filter(recipient=self.user_a).get()
-        self.assertIsNone(notif.meeting)
-        self.assertIn('1 cuộc họp', notif.title)
-        self.assertIn('Họp test nhắc lịch', notif.message)
-
-    def test_ignores_draft_and_postponed_meetings(self):
-        Meeting.objects.create(
-            title='Nháp', meeting_date=timezone.localdate(),
-            start_time='09:00:00', session='am', level='uy_ban',
-            room=self.room, unit='Văn phòng', host='Test', content='',
-            is_draft=True, created_by=self.user_b,
-        )
-        Meeting.objects.create(
-            title='Đã hoãn', meeting_date=timezone.localdate(),
-            start_time='10:00:00', session='am', level='uy_ban',
-            room=self.room, unit='Văn phòng', host='Test', content='',
-            postponed=True, created_by=self.user_b,
-        )
-
-        call_command('send_daily_reminders')
-
-        self.assertEqual(Notification.objects.count(), 0)
-
-
 class MeetingNotificationMessageTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -520,3 +462,47 @@ class MeetingNotificationMessageTests(TestCase):
         message = _meeting_notification_message(meeting)
         self.assertIn('Họp B', message)
         self.assertIn('Hội trường Quận 1', message)
+
+
+class MeetingUpdateNotificationTests(TestCase):
+    """Sua 1 lich DA cong bo tu truoc cung phai bao (yeu cau 02/10/2026:
+    "moi lan cap nhat hay them deu phai bao"), voi noi dung day/ngoai man
+    hinh CHUNG CHUNG (khong lo chi tiet), con trong app van xem duoc chi
+    tiet day du."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.editor = User.objects.create_user(
+            username='meeting_editor', email='meeting_editor@example.com',
+            password='StrongPass123', role='van_thu', display_name='Editor',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.other = User.objects.create_user(
+            username='other_recipient', email='other_recipient@example.com',
+            password='StrongPass123', role='thanh_vien', display_name='Other',
+            unit='Văn phòng HĐND-UBND',
+        )
+        self.room = Room.objects.create(name='Phòng test', location='Lầu 1', capacity=10)
+        self.client.force_authenticate(user=self.editor)
+        self.meeting = Meeting.objects.create(
+            title='Họp gốc', meeting_date=timezone.localdate(), start_time=datetime.time(9, 0),
+            session='am', level='uy_ban', room=self.room, unit='Văn phòng',
+            host='Editor', content='', is_draft=False, created_by=self.editor,
+        )
+        Notification.objects.all().delete()
+
+    @patch('core.serializers.send_push_to_users')
+    def test_editing_published_meeting_notifies_with_generic_push_text(self, mock_push):
+        response = self.client.patch(
+            f'/api/meetings/{self.meeting.id}/', {'title': 'Họp gốc (đã sửa giờ)'}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        notif = Notification.objects.get(recipient=self.other)
+        self.assertEqual(notif.title, 'Lịch họp cập nhật')
+        self.assertIn('Họp gốc (đã sửa giờ)', notif.message)
+
+        mock_push.assert_called_once()
+        args, _ = mock_push.call_args
+        self.assertEqual(args[1], 'Lịch họp cập nhật')
+        self.assertEqual(args[2], PUSH_GENERIC_MESSAGE)

@@ -181,11 +181,18 @@ def _meeting_where(meeting):
 
 
 def _meeting_notification_message(meeting):
-    """Cau thong bao de doc hon cho nguoi nhan (yeu cau 02/10/2026: thay vi
-    chi '"<ten>" — <ngay gio>', can ro rang la LOI MOI/BAO CHO ai do, kem
-    dia diem)."""
+    """Cau thong bao chi tiet, dung cho danh sach thong bao TRONG APP (bam
+    chuong hoac banner). Khong dung chuoi nay cho push ra man hinh khoa --
+    xem PUSH_GENERIC_MESSAGE."""
     when = f"{meeting.meeting_date.strftime('%d/%m/%Y')} lúc {meeting.start_time.strftime('%H:%M')}"
     return f'Bạn có lịch họp mới "{meeting.title}" vào {when}, tại {_meeting_where(meeting)}.'
+
+
+# Noi dung thong bao day ra MAN HINH KHOA / thanh trang thai (yeu cau
+# 02/10/2026): co tinh CHUNG CHUNG, khong lo chi tiet lich hop (vd. tieu de
+# nhay cam) ra man hinh khoa dien thoai -- chi tiet thuc su chi xem duoc sau
+# khi mo app va dang nhap. Dung chung cho ca tao moi lan sua lich da cong bo.
+PUSH_GENERIC_MESSAGE = 'Lịch họp của bạn có cập nhật mới — vui lòng mở ứng dụng để xem chi tiết.'
 
 
 class MeetingSerializer(serializers.ModelSerializer):
@@ -221,18 +228,17 @@ class MeetingSerializer(serializers.ModelSerializer):
 
         # Thong bao lich hop moi den TOAN BO tai khoan, khong loc theo don vi
         # (theo bien ban hop 22/08/2026, muc 12).
-        message = _meeting_notification_message(meeting)
         recipients = list(User.objects.exclude(id=request.user.id))
         Notification.objects.bulk_create([
             Notification(
                 recipient=user,
                 meeting=meeting,
                 title='Lịch họp mới',
-                message=message,
+                message=_meeting_notification_message(meeting),
             )
             for user in recipients
         ])
-        send_push_to_users(recipients, 'Lịch họp mới', message)
+        send_push_to_users(recipients, 'Lịch họp mới', PUSH_GENERIC_MESSAGE)
         return meeting
 
     def update(self, instance, validated_data):
@@ -251,21 +257,26 @@ class MeetingSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        # Lich tu nhap chuyen sang cong bo chinh thuc: gui thong bao luc nay
-        # (luc tao con dang nhap thi da bo qua thong bao).
-        if was_draft and not instance.is_draft:
-            message = _meeting_notification_message(instance)
+        # Bao cho moi lan nguoi tao TAC DONG len 1 lich da/dang duoc cong bo
+        # -- hoac la luc nhap chuyen sang cong bo chinh thuc, hoac la sua 1
+        # lich da cong bo tu truoc (yeu cau 02/10/2026: "moi lan cap nhat
+        # hay them deu phai bao", khong chi luc tao moi). Bo tinh nang nhac
+        # lich rieng (cron 6h sang) theo yeu cau cung ngay.
+        became_published = was_draft and not instance.is_draft
+        edited_while_published = not was_draft and not instance.is_draft
+        if became_published or edited_while_published:
+            notif_title = 'Lịch họp mới' if became_published else 'Lịch họp cập nhật'
             recipients = list(User.objects.exclude(id=request.user.id))
             Notification.objects.bulk_create([
                 Notification(
                     recipient=user,
                     meeting=instance,
-                    title='Lịch họp mới',
-                    message=message,
+                    title=notif_title,
+                    message=_meeting_notification_message(instance),
                 )
                 for user in recipients
             ])
-            send_push_to_users(recipients, 'Lịch họp mới', message)
+            send_push_to_users(recipients, notif_title, PUSH_GENERIC_MESSAGE)
 
         if member_ids is not None:
             new_ids = {m.id for m in member_ids}
