@@ -59,6 +59,18 @@ class AppState extends ChangeNotifier {
       notifications.where((n) => n['is_read'] == false).length;
   Timer? _notifTimer;
 
+  /// ID các thông báo đã từng thấy qua (để lần poll sau biết cái nào MỚI
+  /// thật sự xuất hiện, không phải toàn bộ danh sách chưa đọc cũ).
+  final Set<int> _seenNotificationIds = {};
+
+  /// Hàng đợi thông báo mới cần hiện banner trên màn hình (yêu cầu
+  /// 02/10/2026: hiện thông báo nổi kiểu Messenger/Facebook, không chỉ
+  /// cập nhật số đỏ ở chuông). ShellScreen lắng nghe và rút dần ra để hiện.
+  final List<Map<String, dynamic>> _toastQueue = [];
+  List<Map<String, dynamic>> get toastQueue => _toastQueue;
+  Map<String, dynamic>? consumeNextToast() =>
+      _toastQueue.isEmpty ? null : _toastQueue.removeAt(0);
+
   UserRole? get role => _role;
   String get pageId => _pageId;
   bool get isLoggedIn => _role != null;
@@ -166,6 +178,17 @@ class AppState extends ChangeNotifier {
       if (vibrateOnNew && newUnread > unreadNotificationCount) {
         push.pushVibrate();
       }
+      // Hien banner noi tren man hinh cho tung thong bao THAT SU moi (chua
+      // tung thay qua lan poll truoc) -- yeu cau 02/10/2026. Lan tai dau
+      // tien (vibrateOnNew=false luc dang nhap) chi "ghi nhan da thay",
+      // khong hien banner cho ca loat thong bao cu chua doc.
+      if (vibrateOnNew) {
+        _toastQueue.addAll(newList.where(
+            (n) => !_seenNotificationIds.contains(n['id'] as int)));
+      }
+      _seenNotificationIds
+        ..clear()
+        ..addAll(newList.map((n) => n['id'] as int));
       notifications = newList;
       notifyListeners();
     } catch (_) {

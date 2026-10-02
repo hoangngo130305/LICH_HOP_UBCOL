@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
@@ -30,7 +32,7 @@ class NavSection {
 }
 
 /// Khung ứng dụng: thanh trên + menu trái (hoặc Drawer trên màn hình hẹp).
-class ShellScreen extends StatelessWidget {
+class ShellScreen extends StatefulWidget {
   const ShellScreen({super.key});
 
   static List<NavSection> sectionsFor(UserRole role,
@@ -148,6 +150,67 @@ class ShellScreen extends StatelessWidget {
       };
 
   @override
+  State<ShellScreen> createState() => _ShellScreenState();
+}
+
+class _ShellScreenState extends State<ShellScreen> {
+  late final AppState _state;
+  OverlayEntry? _bannerEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    _state = AppScope.read(context);
+    _state.addListener(_onStateChanged);
+  }
+
+  @override
+  void dispose() {
+    _state.removeListener(_onStateChanged);
+    _bannerEntry?.remove();
+    super.dispose();
+  }
+
+  /// Rút dần thông báo mới từ hàng đợi của AppState và hiện banner nổi —
+  /// tách khỏi build() vì chèn OverlayEntry là một hành động (side effect),
+  /// không phải việc dựng UI thuần.
+  void _onStateChanged() {
+    // Neu dang hien 1 banner roi thi doi no bien mat (remove() ben duoi tu
+    // goi tiep _showNextBanner) -- tranh 2 banner chong len nhau khi nhieu
+    // thong bao moi xuat hien trong cung 1 lan poll.
+    if (_bannerEntry == null) _showNextBanner();
+  }
+
+  void _showNextBanner() {
+    final next = _state.consumeNextToast();
+    if (next != null) _showBanner(next);
+  }
+
+  void _showBanner(Map<String, dynamic> notif) {
+    final overlay = Overlay.of(context);
+    late final OverlayEntry entry;
+    void remove() {
+      entry.remove();
+      if (identical(_bannerEntry, entry)) _bannerEntry = null;
+      if (_state.toastQueue.isNotEmpty) _showNextBanner();
+    }
+
+    entry = OverlayEntry(
+      builder: (_) => _NotificationBanner(
+        title: notif['title'] as String? ?? 'Thông báo mới',
+        message: notif['message'] as String? ?? '',
+        onTap: () {
+          remove();
+          showNotificationsDialog(context);
+        },
+        onExpire: remove,
+      ),
+    );
+    _bannerEntry = entry;
+    overlay.insert(entry);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final role = state.role;
@@ -164,7 +227,7 @@ class ShellScreen extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         child: KeyedSubtree(
           key: ValueKey(state.pageId),
-          child: pageFor(state.pageId),
+          child: ShellScreen.pageFor(state.pageId),
         ),
       ),
     );
@@ -505,6 +568,142 @@ class _NavTile extends StatelessWidget {
                         color: AppColors.dangerText)),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner thông báo nổi ở góc trên màn hình khi có lịch họp mới trong lúc
+/// đang mở app (kiểu Messenger/Facebook) — yêu cầu 02/10/2026. Trước đây
+/// thông báo mới chỉ tăng số đỏ ở chuông + rung, không hiện gì trên màn
+/// hình nên dễ bị bỏ lỡ khi không để ý chuông.
+class _NotificationBanner extends StatefulWidget {
+  final String title;
+  final String message;
+  final VoidCallback onTap;
+  final VoidCallback onExpire;
+
+  const _NotificationBanner({
+    required this.title,
+    required this.message,
+    required this.onTap,
+    required this.onExpire,
+  });
+
+  @override
+  State<_NotificationBanner> createState() => _NotificationBannerState();
+}
+
+class _NotificationBannerState extends State<_NotificationBanner> {
+  static const _transition = Duration(milliseconds: 260);
+  bool _visible = false;
+  Timer? _autoHide;
+
+  @override
+  void initState() {
+    super.initState();
+    // Bat dau tu trang thai an de co hieu ung truot xuong + mo dan khi hien
+    // (doi 1 frame de AnimatedSlide/AnimatedOpacity bat duoc su thay doi).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _visible = true);
+    });
+    _autoHide = Timer(const Duration(seconds: 6), _hide);
+  }
+
+  @override
+  void dispose() {
+    _autoHide?.cancel();
+    super.dispose();
+  }
+
+  void _hide() {
+    if (!mounted) return;
+    _autoHide?.cancel();
+    setState(() => _visible = false);
+    Future.delayed(_transition, widget.onExpire);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 10,
+      left: 12,
+      right: 12,
+      child: Align(
+        alignment: Alignment.topRight,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: AnimatedSlide(
+            duration: _transition,
+            curve: Curves.easeOut,
+            offset: _visible ? Offset.zero : const Offset(0, -0.3),
+            child: AnimatedOpacity(
+              duration: _transition,
+              opacity: _visible ? 1 : 0,
+              child: Material(
+                color: Colors.white,
+                elevation: 6,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    _autoHide?.cancel();
+                    widget.onTap();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: AppColors.accentBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.event_available,
+                              size: 18, color: AppColors.accent),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.tp)),
+                              const SizedBox(height: 2),
+                              Text(widget.message,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: AppColors.ts)),
+                            ],
+                          ),
+                        ),
+                        InkWell(
+                          onTap: _hide,
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.all(2),
+                            child: Icon(Icons.close,
+                                size: 16, color: AppColors.tm),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
