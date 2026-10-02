@@ -101,7 +101,7 @@ class ShellScreen extends StatefulWidget {
               NavItem('tv-week', Icons.view_week_outlined, 'Theo tuần'),
               NavItem('tv-month', Icons.calendar_month_outlined,
                   'Theo tháng'),
-            ], title: 'Lịch của tôi'),
+            ], title: 'Lịch phòng/ban'),
             const NavSection([
               NavItem('tv-search', Icons.search, 'Tìm kiếm lịch họp'),
             ], title: 'Tra cứu'),

@@ -452,7 +452,8 @@ class AppState extends ChangeNotifier {
   List<Meeting> get postponedDept =>
       deptMeetings.where((m) => m.postponed).toList()..sort(_byDateTime);
 
-  /// Lịch của thành viên đang đăng nhập.
+  /// Lịch của thành viên đang đăng nhập (chỉ tính lịch MÌNH được mời/có tên
+  /// trong thành phần tham dự).
   List<Meeting> get myMeetings => allMeetings
       .where((m) => currentMemberId != null && m.memberIds.contains(currentMemberId))
       .toList()
@@ -460,6 +461,24 @@ class AppState extends ChangeNotifier {
 
   List<Meeting> myMeetingsOn(DateTime day) =>
       myMeetings.where((m) => VnDate.sameDay(m.date, day)).toList();
+
+  bool isAttendeeOf(Meeting m) =>
+      currentMemberId != null && m.memberIds.contains(currentMemberId);
+
+  /// Lịch mà thành viên ĐƯỢC PHÉP XEM dù không có tên trong thành phần tham
+  /// dự -- lịch cấp Ủy ban (ai cũng xem được) + toàn bộ lịch nội bộ của
+  /// ĐÚNG đơn vị mình (yêu cầu 02/10/2026: "còn lại không nắm được lịch cả
+  /// tuần của phòng" -- trước đây các trang Lịch theo ngày/tuần/tháng chỉ
+  /// lọc theo lịch được mời, bỏ sót lịch của phòng mà mình không phải
+  /// thành phần tham dự). Khớp với quyền xem phía backend
+  /// (MeetingViewSet.get_queryset: level=uy_ban hoặc unit=user.unit).
+  List<Meeting> get visibleMeetings => allMeetings
+      .where((m) => m.level == MeetingLevel.uyBan || m.unit == unit)
+      .toList()
+    ..sort(_byDateTime);
+
+  List<Meeting> visibleMeetingsOn(DateTime day) =>
+      visibleMeetings.where((m) => VnDate.sameDay(m.date, day)).toList();
 
   List<Meeting> meetingsOn(DateTime day) =>
       allMeetings.where((m) => VnDate.sameDay(m.date, day)).toList()

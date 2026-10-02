@@ -76,6 +76,19 @@ class _MemberSelectorState extends State<MemberSelector> {
     widget.onChanged(List.of(_selected));
   }
 
+  /// Chọn hết toàn bộ kết quả đang lọc (vd. gõ tên đơn vị rồi bấm "Chọn tất
+  /// cả" để thêm cả phòng cùng lúc, thay vì bấm từng người) — yêu cầu
+  /// 02/10/2026.
+  void _selectAllFiltered() {
+    setState(() => _selected.addAll(_filtered.map((m) => m.id)));
+    widget.onChanged(List.of(_selected));
+  }
+
+  void _clearSelected() {
+    setState(() => _selected.clear());
+    widget.onChanged(List.of(_selected));
+  }
+
   bool _addingCustom = false;
 
   Future<void> _addCustom(String name) async {
@@ -116,6 +129,34 @@ class _MemberSelectorState extends State<MemberSelector> {
         ),
         if (_open) ...[
           const SizedBox(height: 8),
+          if (_filtered.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: InkWell(
+                onTap: _selectAllFiltered,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.done_all,
+                          size: 15, color: AppColors.accent),
+                      const SizedBox(width: 5),
+                      Text(
+                        _query.trim().isEmpty
+                            ? 'Chọn tất cả (${_filtered.length})'
+                            : 'Chọn tất cả ${_filtered.length} kết quả khớp "${_query.trim()}"',
+                        style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accent),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Container(
             constraints: const BoxConstraints(maxHeight: 190),
             decoration: BoxDecoration(
@@ -225,8 +266,23 @@ class _MemberSelectorState extends State<MemberSelector> {
                 ),
         ),
         const SizedBox(height: 4),
-        Text('Đã chọn ${_selected.length} thành viên',
-            style: const TextStyle(fontSize: 11, color: AppColors.tm)),
+        Row(
+          children: [
+            Text('Đã chọn ${_selected.length} thành viên',
+                style: const TextStyle(fontSize: 11, color: AppColors.tm)),
+            if (_selected.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              InkWell(
+                onTap: _clearSelected,
+                child: const Text('Bỏ chọn tất cả',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ],
+        ),
       ],
     );
   }

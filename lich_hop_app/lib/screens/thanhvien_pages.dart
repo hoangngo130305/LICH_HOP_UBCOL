@@ -332,12 +332,13 @@ class _TvDayPageState extends State<TvDayPage> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final meetings = state.myMeetingsOn(_day)
+    final meetings = state.visibleMeetingsOn(_day)
       ..sort((a, b) => a.time.hour.compareTo(b.time.hour));
+    final mine = meetings.where(state.isAttendeeOf).toList();
     final accepted =
-        meetings.where((m) => state.rsvpOf(m.id) == Rsvp.accepted).length;
+        mine.where((m) => state.rsvpOf(m.id) == Rsvp.accepted).length;
     final pending =
-        meetings.where((m) => state.rsvpOf(m.id) == Rsvp.pending).length;
+        mine.where((m) => state.rsvpOf(m.id) == Rsvp.pending).length;
     final isToday = VnDate.sameDay(_day, VnDate.today);
 
     return Column(
@@ -448,7 +449,9 @@ class _HourRow extends StatelessWidget {
                   : Column(
                       children: [
                         for (final m in meetings)
-                          _TimelineItem(m, rsvp: state.rsvpOf(m.id)),
+                          _TimelineItem(m,
+                              rsvp: state.rsvpOf(m.id),
+                              isMine: state.isAttendeeOf(m)),
                       ],
                     ),
             ),
@@ -462,18 +465,22 @@ class _HourRow extends StatelessWidget {
 class _TimelineItem extends StatelessWidget {
   final Meeting meeting;
   final Rsvp rsvp;
+  // false khi day la lich CUA PHONG hien de biet tinh hinh chung, khong
+  // phai lich ban duoc moi -- tranh gan nham mau/badge RSVP "chua xac nhan"
+  // cho mot cuoc hop ma minh khong he la thanh phan tham du.
+  final bool isMine;
 
-  const _TimelineItem(this.meeting, {required this.rsvp});
+  const _TimelineItem(this.meeting, {required this.rsvp, this.isMine = true});
 
   @override
   Widget build(BuildContext context) {
-    final color = _rsvpColor(rsvp);
+    final color = isMine ? _rsvpColor(rsvp) : AppColors.tm;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 4),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: _rsvpBg(rsvp),
+        color: isMine ? _rsvpBg(rsvp) : AppColors.s0,
         borderRadius:
             const BorderRadius.horizontal(right: Radius.circular(8)),
       ),
@@ -532,7 +539,10 @@ class _TimelineItem extends StatelessWidget {
                                       style: AppTheme.meta),
                                 ],
                               ),
-                            AppBadge.rsvp(rsvp),
+                            isMine
+                                ? AppBadge.rsvp(rsvp)
+                                : const AppBadge('Của phòng',
+                                    bg: AppColors.s0, fg: AppColors.ts),
                           ],
                         ),
                       ],
@@ -564,9 +574,10 @@ class _TvWeekPageState extends State<TvWeekPage> {
     final state = AppScope.of(context);
     final days = [for (var i = 0; i < 7; i++) _weekStart.add(Duration(days: i))];
     final end = days.last;
-    final weekMeetings = state.myMeetings
+    final weekMeetings = state.visibleMeetings
         .where((m) => !m.date.isBefore(_weekStart) && !m.date.isAfter(end))
         .toList();
+    final myWeekMeetings = weekMeetings.where(state.isAttendeeOf).toList();
     const hours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
     return Column(
@@ -595,28 +606,32 @@ class _TvWeekPageState extends State<TvWeekPage> {
               valueColor: AppColors.accent),
           StatCard(
               'Đã xác nhận',
-              '${weekMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.accepted).length}',
+              '${myWeekMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.accepted).length}',
               valueColor: AppColors.okGreen),
           StatCard(
               'Chờ xác nhận',
-              '${weekMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.pending).length}',
+              '${myWeekMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.pending).length}',
               valueColor: AppColors.warn),
           StatCard(
               'Từ chối',
-              '${weekMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.declined).length}',
+              '${myWeekMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.declined).length}',
               valueColor: AppColors.danger),
         ]),
         WeekTimelineGrid(
           days: days,
           meetings: weekMeetings,
           hours: hours,
-          accentColor: (m) => _rsvpColor(state.rsvpOf(m.id)),
-          bgColor: (m) => _rsvpBg(state.rsvpOf(m.id)),
+          accentColor: (m) => state.isAttendeeOf(m)
+              ? _rsvpColor(state.rsvpOf(m.id))
+              : AppColors.tm,
+          bgColor: (m) =>
+              state.isAttendeeOf(m) ? _rsvpBg(state.rsvpOf(m.id)) : AppColors.s0,
           onTapMeeting: (m) => showMeetingDetail(context, m, withRsvp: true),
           legend: const [
             (AppColors.okGreen, 'Đã xác nhận'),
             (AppColors.warn, 'Chờ xác nhận'),
             (AppColors.danger, 'Từ chối'),
+            (AppColors.tm, 'Của phòng (không phải lịch mời)'),
           ],
         ),
       ],
@@ -639,10 +654,11 @@ class _TvMonthPageState extends State<TvMonthPage> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final monthMeetings = state.myMeetings
+    final monthMeetings = state.visibleMeetings
         .where((m) =>
             m.date.year == _month.year && m.date.month == _month.month)
         .toList();
+    final myMonthMeetings = monthMeetings.where(state.isAttendeeOf).toList();
     final dayCount =
         monthMeetings.map((m) => m.date.day).toSet().length;
 
@@ -656,11 +672,11 @@ class _TvMonthPageState extends State<TvMonthPage> {
               valueColor: AppColors.accent),
           StatCard(
               'Đã xác nhận',
-              '${monthMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.accepted).length}',
+              '${myMonthMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.accepted).length}',
               valueColor: AppColors.okGreen),
           StatCard(
               'Chờ xác nhận',
-              '${monthMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.pending).length}',
+              '${myMonthMeetings.where((m) => state.rsvpOf(m.id) == Rsvp.pending).length}',
               valueColor: AppColors.warn),
           StatCard('Ngày có lịch họp', '$dayCount'),
         ]),
@@ -683,14 +699,16 @@ class _TvMonthPageState extends State<TvMonthPage> {
                 today: VnDate.today,
                 selected: _selected,
                 dotsBuilder: (day) {
-                  final list = state.myMeetingsOn(day);
+                  final list = state.visibleMeetingsOn(day);
+                  final mine = list.where(state.isAttendeeOf).toList();
                   return [
-                    if (list.any((m) => state.rsvpOf(m.id) == Rsvp.accepted))
+                    if (mine.any((m) => state.rsvpOf(m.id) == Rsvp.accepted))
                       AppColors.okGreen,
-                    if (list.any((m) => state.rsvpOf(m.id) == Rsvp.pending))
+                    if (mine.any((m) => state.rsvpOf(m.id) == Rsvp.pending))
                       AppColors.warn,
-                    if (list.any((m) => state.rsvpOf(m.id) == Rsvp.declined))
+                    if (mine.any((m) => state.rsvpOf(m.id) == Rsvp.declined))
                       AppColors.danger,
+                    if (list.length > mine.length) AppColors.tm,
                   ];
                 },
                 onSelectDay: (day) {
@@ -698,16 +716,24 @@ class _TvMonthPageState extends State<TvMonthPage> {
                   showDayMeetingsDialog(
                     context,
                     day,
-                    state.myMeetingsOn(day),
-                    itemBuilder: (context, m) => MeetingCard(
-                      m,
-                      accent: _rsvpColor(state.rsvpOf(m.id)),
-                      extraBadges: [AppBadge.rsvp(state.rsvpOf(m.id))],
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        showMeetingDetail(context, m, withRsvp: true);
-                      },
-                    ),
+                    state.visibleMeetingsOn(day),
+                    itemBuilder: (context, m) {
+                      final mine = state.isAttendeeOf(m);
+                      return MeetingCard(
+                        m,
+                        accent: mine ? _rsvpColor(state.rsvpOf(m.id)) : AppColors.tm,
+                        extraBadges: [
+                          mine
+                              ? AppBadge.rsvp(state.rsvpOf(m.id))
+                              : const AppBadge('Của phòng',
+                                  bg: AppColors.s0, fg: AppColors.ts),
+                        ],
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          showMeetingDetail(context, m, withRsvp: true);
+                        },
+                      );
+                    },
                   );
                 },
               ),
@@ -718,6 +744,7 @@ class _TvMonthPageState extends State<TvMonthPage> {
                   (AppColors.okGreen, 'Đã xác nhận tham dự'),
                   (AppColors.warn, 'Chờ xác nhận'),
                   (AppColors.danger, 'Đã từ chối'),
+                  (AppColors.tm, 'Của phòng'),
                   (AppColors.navy, 'Hôm nay'),
                 ]),
               ),
