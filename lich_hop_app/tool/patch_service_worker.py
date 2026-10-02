@@ -6,11 +6,33 @@ tay 1 lan roi thoi -- phai chay lai script nay SAU MOI LAN build (yeu cau
 23/09/2026: thong bao day + rung). Idempotent: chay nhieu lan khong bi gan
 trung (kiem tra marker truoc khi noi vao).
 
+Flutter (ban hien tai) sinh san 1 handler 'activate' TU HUY DANG KY chinh no
+(self.registration.unregister()) de don dep service worker cache-based cua
+cac ban Flutter cu -- nhung dieu nay khien service worker khong bao gio o
+trang thai "active" on dinh, nen navigator.serviceWorker.ready phia client
+(web/push.js) treo vo han, nguoi dung bam "Bat thong bao day" se thay xoay
+vong khong dung (phat hien 02/10/2026 khi test that tren iPhone). Phai thay
+handler nay bang ban khong tu huy TRUOC KHI noi them push handlers.
+
 Dung: python tool/patch_service_worker.py [duong_dan_toi_build/web]
 Mac dinh duong dan la build/web (thu muc chuan cua `flutter build web`).
 """
+import re
 import sys
 from pathlib import Path
+
+# Khop toan bo khoi "self.addEventListener('activate', ...)" Flutter sinh ra
+# -- ^\}\);\n (khong thut dau dong) la dong dong ngoac THAT SU cuoi cung,
+# phan biet voi cac dong "});"/"}" thut dau o ben trong than ham.
+_SELF_DESTRUCT_ACTIVATE = re.compile(
+    r"self\.addEventListener\('activate'.*?\n^\}\);\n",
+    re.DOTALL | re.MULTILINE,
+)
+_SAFE_ACTIVATE = (
+    "self.addEventListener('activate', (event) => {\n"
+    "  event.waitUntil(self.clients.claim());\n"
+    "});\n"
+)
 
 MARKER = "/* ===== WEB PUSH HANDLERS (patch_service_worker.py) ===== */"
 
@@ -53,8 +75,15 @@ def patch(build_web_dir: Path) -> None:
         print(f"NOT FOUND: {sw_path.name} -- run `flutter build web` first.")
         sys.exit(1)
     content = sw_path.read_text(encoding="utf-8")
+
+    patched_content, n = _SELF_DESTRUCT_ACTIVATE.subn(_SAFE_ACTIVATE, content)
+    if n and patched_content != content:
+        print("Neutered self-unregistering 'activate' handler (was breaking Web Push).")
+    content = patched_content
+
     if MARKER in content:
         print(f"Push handlers already present in {sw_path.name}, skipping.")
+        sw_path.write_text(content, encoding="utf-8")
         return
     sw_path.write_text(content + "\n" + PUSH_HANDLERS, encoding="utf-8")
     print(f"Patched push/notificationclick handlers into {sw_path.name}")
